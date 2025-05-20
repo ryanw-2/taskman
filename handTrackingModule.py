@@ -102,15 +102,13 @@ class handDetector():
                 
                 lmBothLocList.append(singleLocList)
 
-        print(lmBothLocList)
         return lmBothLocList
 
 
 def main():
     # Set up time to calculate frames per second
     pTime = 0
-    cTime = 0
-    
+       
     # Begins video capture and takes in which camera to be activated
     cap = cv.VideoCapture(0)
 
@@ -126,9 +124,9 @@ def main():
         handLocList = detector.findHandLocations(frame)
         bothHandLocList = detector.findBothHandLocations(frame)
 
-        # if bothHandLocList:
-        #     print(bothHandLocList[12])
-        
+        # if bothHandLocList and len(bothHandLocList) > 0:
+        #     print(bothHandLocList)
+
         # Calculate FPS
         cTime = time.time()
         fps = 1/(cTime-pTime)
