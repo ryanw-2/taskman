@@ -104,7 +104,10 @@ class handDetector():
 
         return lmBothLocList
 
-
+"""
+Dummy Main Code
+Will use this class' functions
+"""
 def main():
     # Set up time to calculate frames per second
     pTime = 0
