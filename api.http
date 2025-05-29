@@ -1,0 +1,13 @@
+GET http://127.0.0.1:8000/todos
+###
+GET http://127.0.0.1:8000/todos/200
+###
+GET http://127.0.0.1:8000/todos/abc
+###
+POST http://127.0.0.1:8000/todos
+Content-Type: application/json
+
+{
+    "task": "new task",
+    "complete": false
+}

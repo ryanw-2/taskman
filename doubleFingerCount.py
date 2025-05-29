@@ -54,6 +54,36 @@ def detect(lmList, res):
     
     return res
 
+'''
+Single Frame Function
+At any frame, get the count of fingers up from both hands
+'''
+def getBothFingersUp(lmBoth):
+    # Initialize the hand landmark location lists of each hand
+    if lmBoth and len(lmBoth) > 0:
+        firstDetected = []
+        secondDetected = []
+
+        if len(lmBoth) > 0:
+            firstDetected = detect(lmBoth[0], firstDetected)
+
+        if len(lmBoth) > 1:
+            secondDetected = detect(lmBoth[1], secondDetected)    
+        
+        '''
+        Process Return Element
+        '''
+        totalFirst = 0
+        totalSecond = 0
+
+        if firstDetected:
+            totalFirst = firstDetected.count(1)
+        if secondDetected:
+            totalSecond = secondDetected.count(1)
+        
+        return totalFirst, totalSecond
+
+
 def main():
     # Set up webcame
     widthCam, heightCam = 640, 480
@@ -74,33 +104,9 @@ def main():
         it doesn't matter which hand is processed first.
         '''
         # Hand node landmark locations of both hands
-        lmBothList = detector.findBothHandLocations(frame)
+        lmBothList, bb = detector.findBothHandLocations(frame)
         
-        # Initialize the hand landmark location lists of each hand
-        if lmBothList and len(lmBothList) > 0:
-            firstDetected = []
-            secondDetected = []
-
-            if len(lmBothList) > 0:
-                firstDetected = detect(lmBothList[0], firstDetected)
-
-            if len(lmBothList) > 1:
-                print("got here")
-                secondDetected = detect(lmBothList[1], secondDetected)    
-            
-            '''
-            Process Return Element
-            '''
-            totalFirst = 0
-            totalSecond = 0
-
-            if firstDetected:
-                totalFirst = firstDetected.count(1)
-            if secondDetected:
-                totalSecond = secondDetected.count(1)
-            
-            print("first hand finger count is: ", totalFirst)
-            print("second hand finger count is: ", totalSecond)
+        getBothFingersUp(lmBothList)
         
         cTime = time.time()
         fps = 1/(cTime-pTime)
