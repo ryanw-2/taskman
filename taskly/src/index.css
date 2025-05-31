@@ -1,0 +1,73 @@
+@import "tailwindcss";
+/* Register the font once */
+@font-face {
+  font-family: "SF Pro";
+  src: url('./fonts/SF-Pro.ttf') format('truetype');
+  font-style: normal;
+  font-weight: 100 900; /* Allows dynamic font-weight use */
+  font-display: swap;
+}
+
+@theme {
+  --font-script: SF Pro;
+  
+  --font-weight-medium: 500;
+  --font-weight-bold: 800;
+}
+
+@theme {
+  /* Sea-salt → sea */
+  --color-sea-100: #393429;
+  --color-sea-200: #726752;
+  --color-sea-300: #a49982;
+  --color-sea-400: #cdc7ba;
+  --color-sea-500: #f7f6f4;
+  --color-sea-600: #f8f7f6;
+  --color-sea-700: #faf9f8;
+  --color-sea-800: #fcfbfa;
+  --color-sea-900: #fdfdfd;
+
+  /* Timber-wolf → timber */
+  --color-timber-100: #2b2a24;
+  --color-timber-200: #575448;
+  --color-timber-300: #827e6d;
+  --color-timber-400: #a8a496;
+  --color-timber-500: #cbc9c1;
+  --color-timber-600: #d6d5ce;
+  --color-timber-700: #e0dfda;
+  --color-timber-800: #ebeae7;
+  --color-timber-900: #f5f4f3;
+
+  /* Drab-dark-brown → drab */
+  --color-drab-100: #100f0c;
+  --color-drab-200: #1f1e18;
+  --color-drab-300: #2f2d24;
+  --color-drab-400: #3e3d30;
+  --color-drab-500: #4f4d3d;
+  --color-drab-600: #78755c;
+  --color-drab-700: #9e9a81;
+  --color-drab-800: #bebcab;
+  --color-drab-900: #dfddd5;
+
+  /* Jet → jet */
+  --color-jet-100: #0a0a09;
+  --color-jet-200: #141311;
+  --color-jet-300: #1d1d1a;
+  --color-jet-400: #272622;
+  --color-jet-500: #31302b;
+  --color-jet-600: #5e5c52;
+  --color-jet-700: #8a8779;
+  --color-jet-800: #b1afa6;
+  --color-jet-900: #d8d7d2;
+
+  /* Battleship-gray → battleship */
+  --color-battleship-100: #1e1f1d;
+  --color-battleship-200: #3d3d3b;
+  --color-battleship-300: #5b5c58;
+  --color-battleship-400: #7a7b76;
+  --color-battleship-500: #979893;
+  --color-battleship-600: #acadaa;
+  --color-battleship-700: #c1c2bf;
+  --color-battleship-800: #d6d6d4;
+  --color-battleship-900: #eaebea;
+}
