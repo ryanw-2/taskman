@@ -1,12 +1,12 @@
-from .database import Base
+from database import Base
 from sqlalchemy.orm import relationship
 from datetime import datetime, timezone
 from sqlalchemy import Column, Integer, String, Boolean, Float, DateTime, ForeignKey, Text
 
-# User
-# Calendar
-# Checklist
-# Notepad - record 
+# User - user, pass, email
+# Calendar - record events
+# Checklist - record tasks
+# Notepad - record notes
 # SmartSearch - record prompts/questions asked
 
 class User(Base):
