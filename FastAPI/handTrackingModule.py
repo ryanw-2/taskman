@@ -43,16 +43,7 @@ class handDetector():
                 # id marks which finger node
                 # landmark specifies the location as a ratio of the window size
                 if draw:
-                    self.mpDraw.draw_landmarks(frame, handLms, self.mpHands.HAND_CONNECTIONS)
-                    
-                    # TODO optimize
-                    # for id, lm in enumerate(handLms.landmark):
-                    #     height, width, channel = frame.shape
-                    #     # multiplies the ratio with frame size
-                    #     center_x, center_y = int(lm.x * width), int(lm.y * height)
-                        
-                    #     # returns a list of 
-                    #     # node number : center_x, center_y           
+                    self.mpDraw.draw_landmarks(frame, handLms, self.mpHands.HAND_CONNECTIONS)       
         
         return frame
     
@@ -87,9 +78,11 @@ class handDetector():
             yMin, yMax = min(yList), max(yList)
             boundingBox = xMin, yMin, xMax, yMax
             buffer = 10
+
             if draw:
                 cv.rectangle(frame, (boundingBox[0]-buffer, boundingBox[1]-buffer), 
                              (boundingBox[2]+buffer, boundingBox[3]+buffer), (0,255,0), 1)
+        
 
         return lmLocList, boundingBox
     
@@ -137,7 +130,10 @@ class handDetector():
 
     '''
     Given a hand node landmark list, and the index of two hand nodes,
-    returns an integer that is the distance between the two points
+    returns:
+         an integer that is the distance between the two points
+         center x of activation point
+         center y of activation point
     '''
     def findDistance(self, frm, lmList, point1, point2, mark, draw=False):
         # Find distance between index and first
@@ -150,10 +146,20 @@ class handDetector():
             cv.line(frm, (first_x, first_y), (second_x, second_y), (110, 170, 255), 1)
             cv.circle(frm, (center_x, center_y), 10, (0, 106, 255), cv.FILLED)
             # if the distance is practically zero and some pinky is down
-            if gapLength < 40 and mark:
+            if gapLength < 20 and mark:
                 cv.circle(frm, (center_x, center_y), 10, (204, 255, 0), cv.FILLED)
+            
+            # Mediapipe works in RGB
+            rgb = cv.cvtColor(frm, cv.COLOR_BGR2RGB)
+            # Using Hands module in Media Pipe to detect hands
+            self.results = self.hands.process(rgb)
+            if self.results.multi_hand_landmarks:
+                for handLms in self.results.multi_hand_landmarks:
+                    # id marks which finger node
+                    # landmark specifies the location as a ratio of the window size
+                    self.mpDraw.draw_landmarks(frm, handLms, self.mpHands.HAND_CONNECTIONS)
 
-        return gapLength
+        return gapLength, center_x, center_y
 
     '''
     Helper Function to detect thumb orientation and whether the

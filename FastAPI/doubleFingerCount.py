@@ -107,7 +107,8 @@ def main():
         lmBothList, bb = detector.findBothHandLocations(frame)
         
         getBothFingersUp(lmBothList)
-        
+        print("First Hand ", first)
+
         cTime = time.time()
         fps = 1/(cTime-pTime)
         pTime = cTime

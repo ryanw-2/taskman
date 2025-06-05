@@ -16,7 +16,7 @@ gap. Needs to be calibrated
 '''
 
 
-widthCam, heightCam = 640, 480
+widthCam, heightCam = 1080, 720
 
 cap = cv.VideoCapture(0)
 cap.set(3, widthCam)
@@ -24,7 +24,7 @@ cap.set(4, heightCam)
 
 # higher detection confidence
 detector = htm.handDetector(minDetectionConf=0.5)
-pTime = 0
+# pTime = 0
 
 slider = 300
 norm = 0
@@ -36,7 +36,7 @@ while True:
         break
     
     # frame = cv.flip(frame, 1)
-    frame = detector.findHands(frame)
+    frame = detector.findHands(frame, draw=False)
     lmBothList, bb = detector.findBothHandLocations(frame)
     
     setMark = False
@@ -47,6 +47,7 @@ while True:
         if len(firstDetected) > 3 and len(secondDetected) > 3:
             if firstDetected[4] == 0 or secondDetected[4] == 0:
                 setMark = True
+            setMark = True
 
         # print("first hand: ", firstDetected)
         # print("second hand: ", secondDetected)
@@ -59,11 +60,16 @@ while True:
                 widthBox = abs(boundingBox[2] - boundingBox[0])
                 heightBox = abs(boundingBox[3] - boundingBox[1])
                 area = widthBox * heightBox
-                
+
+                drawFlag = False
                 if 8000 < area < 40000:
-                    gapLength = detector.findDistance(frame, lmList, 4, 8, setMark, draw=True)
+                    drawFlag = True
+                    gapLength, center_x, center_y = detector.findDistance(frame, lmList, 4, 8, setMark, draw=drawFlag)
                     slider = np.interp(gapLength, [20, 200], [300, 150])
-                    norm = np.interp(gapLength, [20, 200], [0, 100]) 
+                    norm = np.interp(gapLength, [20, 200], [0, 100])
+                else:
+                    drawFlag = False
+                 
             
         
 
@@ -73,14 +79,14 @@ while True:
     cv.rectangle(frame, (50, int(slider)), (85, 300), (0, 255, 0), cv.FILLED)
     cv.putText(frame, f'{int(norm)} %', (50, 320), cv.FONT_HERSHEY_PLAIN, 1, (0,255,0), 1)
     
-    # gui set up
-    cTime = time.time()
-    fps = 1 / (cTime - pTime)
-    pTime = cTime
+    # # gui set up
+    # cTime = time.time()
+    # fps = 1 / (cTime - pTime)
+    # pTime = cTime
 
-    cv.putText(
-        frame, f"FPS: {int(fps)}", (35, 45), cv.FONT_HERSHEY_PLAIN, 1, (255, 0, 20), 1
-    )
+    # cv.putText(
+    #     frame, f"FPS: {int(fps)}", (35, 45), cv.FONT_HERSHEY_PLAIN, 1, (255, 0, 20), 1
+    # )
 
     cv.imshow("frame", frame)
     if cv.waitKey(1) == ord("q"):
