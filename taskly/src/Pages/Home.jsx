@@ -15,7 +15,7 @@ export function Home() {
       <div className="grid h-21/24 w-full
       grid-flow-col grid-rows-9 gap-4 p-10
       xl:m-2 lg:m-2 md:m-2">
-
+        
         {/* (Top) Name/Greeting */}
         <div className='col-start-1 col-end-3 row-start-1 row-end-2 rounded-lg bg-drab-500'></div>
 

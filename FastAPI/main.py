@@ -14,7 +14,6 @@ from sqlalchemy.orm import Session
 from contextlib import asynccontextmanager
 # from database import SessionLocal, engine, get_db
 # import models
-# from schemas import TaskBase, TaskCreate, Task
 
 import handTrackingModule as htm
 
@@ -106,6 +105,48 @@ class Camera:
             
             return False
 
+    def get_lmlists(self):
+        with self.lock:
+            success, frame = self.cap.read()
+            if not success:
+                return []
+            
+            frame = detector.findHands(frame, draw=False)
+            lmBothList, bb = detector.findBothHandLocations(frame)
+
+            return lmBothList
+        
+    def get_detected_lists(self) -> tuple[list[int], list[int]]:
+        with self.lock:
+            success, frame = self.cap.read()
+            if not success:
+                return tuple()
+            
+            frame = detector.findHands(frame, draw=False)
+            lmBothList, bb = detector.findBothHandLocations(frame)
+
+            firstDetected = [-1] * 5
+            secondDetected = [-1] * 5
+            if lmBothList and len(lmBothList) > 0:
+                firstDetected, secondDetected = detector.getBothFingersUp(lmBothList)
+            
+            return (firstDetected, secondDetected)
+    
+    '''
+    REQUIRES some_lmlist to not be None or empty
+    '''
+    def get_gap(self, some_lmlist, node1, node2) -> tuple[float, float, float]:
+        with self.lock:
+            success, frame = self.cap.read()
+            if not success:
+                return tuple()
+
+            frame = detector.findHands(frame, draw=False)
+            gapLength, center_x, center_y = detector.findDistance(frame, some_lmlist, node1, node2, True, draw=False)
+            return gapLength, center_x, center_y
+            
+
+
     def release(self) -> None:
         """
         Release the camera resource.
@@ -113,6 +154,40 @@ class Camera:
         with self.lock:
             if self.cap.isOpened():
                 self.cap.release()
+
+'''
+define a generate fingers function that keeps returning 2 binary int lists
+with 1 denoting finger up 0 denoting finger down
+
+define a get /fingers that returns a streaming response
+'''
+
+@app.get("/lmlists")
+async def read_lmlists() :
+    lmBothList = camera.get_lmlists()
+    if not lmBothList:
+        return [[-1], [-1]]
+    elif len(lmBothList) == 1:
+        return [lmBothList[0], []]
+    else:
+        return lmBothList
+
+@app.get("/detectedlists")
+async def read_detected_lists() -> Tuple[List[int], List[int]]:
+    first, second = camera.get_detected_lists()
+    return first, second
+
+@app.get("/gap")
+async def read_finger_gap() -> float:
+    lmBothList = camera.get_lmlists()
+    gap = 100.0
+    for lmList in lmBothList:
+        if lmList and detector.isLeft(lmList):
+            gap, center_x, center_y = camera.get_gap(lmList, 4, 8)
+
+    return gap
+
+# ---------------------------------------------------------------------------------- #
 
 async def gen_frames() -> AsyncGenerator[bytes, None]:
     """
@@ -122,7 +197,6 @@ async def gen_frames() -> AsyncGenerator[bytes, None]:
     """
     try:
         while True:
-            camera.is_mid_finger_up()
             frame = camera.get_frame()
             if frame:
                 yield (b'--frame\r\n'
@@ -135,16 +209,8 @@ async def gen_frames() -> AsyncGenerator[bytes, None]:
     finally:
         print("Frame generator exited.")
 
-'''
-define a generate fingers function that keeps returning 2 binary int lists
-with 1 denoting finger up 0 denoting finger down
 
-define a get /fingers that returns a streaming response
-'''
-
-
-
-@app.get("/video")
+@app.get("/")
 async def video_feed() -> StreamingResponse:
     """
     Video streaming route.

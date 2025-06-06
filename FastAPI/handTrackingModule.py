@@ -97,8 +97,8 @@ class handDetector():
         if self.results.multi_hand_landmarks:
             
             for myHand in self.results.multi_hand_landmarks:
-                xList = []
-                yList = []
+                xList  = []
+                yList= []
                 boundingBox = []
                 singleLocList = []
 
@@ -137,7 +137,7 @@ class handDetector():
     '''
     def findDistance(self, frm, lmList, point1, point2, mark, draw=False):
         # Find distance between index and first
-        first_x, first_y = lmList[point1][1], lmList[point1][2]
+        first_x, first_y= lmList[point1][1], lmList[point1][2]
         second_x, second_y = lmList[point2][1], lmList[point2][2]
         center_x, center_y = (first_x + second_x) // 2, (first_y + second_y) // 2
 
@@ -241,10 +241,10 @@ class handDetector():
     Requires that lmBoth is not None
     Requires that len(lmBoth) > 0
     '''
-    def getBothFingersUp(self, lmBoth):
+    def getBothFingersUp(self, lmBoth) -> tuple[list[int], list[int]]:
         # Initialize the hand landmark location lists of each hand
-        firstDetected = []
-        secondDetected = []
+        firstDetected: list[int] = []
+        secondDetected: list[int] = []
 
         if len(lmBoth) > 0:
             firstDetected = self.detect(lmBoth[0], firstDetected)
