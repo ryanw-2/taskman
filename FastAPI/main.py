@@ -135,6 +135,14 @@ async def gen_frames() -> AsyncGenerator[bytes, None]:
     finally:
         print("Frame generator exited.")
 
+'''
+define a generate fingers function that keeps returning 2 binary int lists
+with 1 denoting finger up 0 denoting finger down
+
+define a get /fingers that returns a streaming response
+'''
+
+
 
 @app.get("/video")
 async def video_feed() -> StreamingResponse:
