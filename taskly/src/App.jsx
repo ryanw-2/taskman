@@ -1,22 +1,20 @@
 import './index.css'
+import React from 'react'
 import Home from './Pages/Home'
 import Calendar from './Pages/Calendar'
 import SmartSearch from './Pages/SmartSearch'
 import Checklist from './Pages/Checklist'
 import {HashRouter as Router, Routes, Route} from 'react-router-dom'
+import Dashboard from './Pages/Dashboard'
 
 
 function App() {
   return (
-    <Router>
-      <Routes>
-        <Route path="/" element={<Home/>}/>
-        <Route path="/calendar" element={<Calendar/>}/>
-        <Route path="/smartsearch" element={<SmartSearch/>}/>
-        <Route path="/checklist" element={<Checklist/>}/>
-      </Routes>
-    </Router>
-  )
+    <div className="App">
+      <h1>Hello World! This is working!</h1>
+      <Dashboard />
+    </div>
+  );
 }
 
-export default App
+export default App;
