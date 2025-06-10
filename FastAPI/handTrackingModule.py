@@ -26,7 +26,9 @@ class handDetector():
                                         self.min_tracking_confidence)
         
         self.mpDraw = mp.solutions.drawing_utils #type: ignore
-
+        
+        # Set up State
+        self.cursorState = (-1, -1, 'none')
     '''
     Draws nodes and connections on frame
     Returns frame
@@ -35,18 +37,94 @@ class handDetector():
         # Mediapipe works in RGB
         rgb = cv.cvtColor(frame, cv.COLOR_BGR2RGB)
         # Using Hands module in Media Pipe to detect hands
+
         self.results = self.hands.process(rgb)
+        self.lmList = []
 
         # Using Hands Landmarks to find each node and connections
-        if self.results.multi_hand_landmarks:
-            for handLms in self.results.multi_hand_landmarks:
-                # id marks which finger node
-                # landmark specifies the location as a ratio of the window size
-                if draw:
+        if draw:
+            if self.results:
+                for handLms in self.results:
+                    # id marks which finger node
+                    # landmark specifies the location as a ratio of the window size
                     self.mpDraw.draw_landmarks(frame, handLms, self.mpHands.HAND_CONNECTIONS)       
-        
+            
         return frame
     
+    def isValidId(self, id: int) -> bool:
+        return (id == 4 or
+            id == 8 or
+            id == 12 or
+            id == 16 or
+            id == 20 or
+            id == 3 or
+            id == 6 or
+            id == 10 or
+            id == 14 or
+            id == 18)
+    
+    def getBoundaries(self, id: int, lm, width, height):
+        xMin = 0
+        xMax = width 
+        yMin = 0
+        yMax = height
+        if id == 0:
+            yMin = int(lm.y * height)
+        if id == 4:
+            xMin = int(lm.x * width)
+        if id == 12:
+            yMax = int(lm.y * height)
+        if id == 20:
+            xMax = int(lm.x * width)
+        
+        return xMin, yMin, xMax, yMax
+
+
+    def find2Hands(self, frame, draw = True):
+        '''
+        Finds the center-x and center-y locations of both hands.
+        Returns a list comprised of a list of two elements of format : [node id, center_x, center_y]
+        '''
+        # Mediapipe works in RGB
+        rgb = cv.cvtColor(frame, cv.COLOR_BGR2RGB)
+        # Using Hands module in Media Pipe to detect hands
+
+        self.results = self.hands.process(rgb)
+        
+        height, width, _ = frame.shape
+        bothLmList = []
+        bbList= []
+
+        if self.results.multi_hand_landmarks:
+            for hand in self.results.multi_hand_landmarks:
+                singleLmList = []
+
+                xMin = 0
+                xMax = width 
+                yMin = 0
+                yMax = height
+
+                for id, lm in enumerate(hand.landmark):
+                    if id == 0:
+                        yMin = int(lm.y * height)
+                    if id == 4:
+                        xMin = int(lm.x * width)
+                    if id == 12:
+                        yMax = int(lm.y * height)
+                    if id == 20:
+                        xMax = int(lm.x * width)
+
+                    if self.isValidId(id):
+                        center_x = int(lm.x * width)
+                        center_y = int(lm.y * height)
+                        singleLmList.append([id, int(lm.x * width), int(lm.y * height)])
+                
+                bbList.append((xMin, yMin, xMax, yMax))
+                bothLmList.append(singleLmList)
+
+
+        return bothLmList, bbList
+
     '''
     Finds the center-x and center-y locations of a specified hand.
     Intuitively, this function may serve well if the user is trying
@@ -112,14 +190,13 @@ class handDetector():
                     
                     singleLocList.append([id, center_x, center_y])
 
-                    if draw:
-                        cv.circle(frame, (center_x, center_y), 15, (255, 0, 255), cv.FILLED)
-                
                 xMin, xMax = min(xList), max(xList)
                 yMin, yMax = min(yList), max(yList)
                 boundingBox = xMin, yMin, xMax, yMax
-                buffer = 10
+                
+                
                 if draw:
+                    buffer = 10
                     cv.rectangle(frame, (boundingBox[0]-buffer, boundingBox[1]-buffer), 
                                 (boundingBox[2]+buffer, boundingBox[3]+buffer), (0,255,0), 1)
                     
@@ -135,31 +212,57 @@ class handDetector():
          center x of activation point
          center y of activation point
     '''
-    def findDistance(self, frm, lmList, point1, point2, mark, draw=False):
+    def findDistance(self, frm, lmList, point1, point2, draw=False):
         # Find distance between index and first
         first_x, first_y= lmList[point1][1], lmList[point1][2]
         second_x, second_y = lmList[point2][1], lmList[point2][2]
         center_x, center_y = (first_x + second_x) // 2, (first_y + second_y) // 2
 
         gapLength = math.hypot(second_x - first_x, second_y - first_y)
+
         if draw:
             cv.line(frm, (first_x, first_y), (second_x, second_y), (110, 170, 255), 1)
             cv.circle(frm, (center_x, center_y), 10, (0, 106, 255), cv.FILLED)
             # if the distance is practically zero and some pinky is down
-            if gapLength < 20 and mark:
+            if gapLength < 30 and center_y < 180:
                 cv.circle(frm, (center_x, center_y), 10, (204, 255, 0), cv.FILLED)
-            
-            # Mediapipe works in RGB
-            rgb = cv.cvtColor(frm, cv.COLOR_BGR2RGB)
-            # Using Hands module in Media Pipe to detect hands
-            self.results = self.hands.process(rgb)
-            if self.results.multi_hand_landmarks:
-                for handLms in self.results.multi_hand_landmarks:
-                    # id marks which finger node
-                    # landmark specifies the location as a ratio of the window size
-                    self.mpDraw.draw_landmarks(frm, handLms, self.mpHands.HAND_CONNECTIONS)
 
         return gapLength, center_x, center_y
+
+
+    def setCursorState(self, gap, center_x, center_y) -> None:
+        '''
+        Detects clicks and hand swipes, and sets the cursor state
+        accordingly
+        '''
+        cx, cy, st = self.cursorState
+
+        if gap < 30 and st == 'none':
+            gesture = 'click'
+        elif gap < 30 and st == 'click':
+            x_difference = center_x - cx
+            y_difference = center_y - cy
+
+            if x_difference > 15:
+                gesture = 'rightswipe'
+            elif x_difference < -15:
+                gesture = 'leftswipe'
+            elif y_difference > 15:
+                gesture = 'downswipe'
+            elif y_difference < -15:
+                gesture = 'upswipe'
+            else:
+                gesture = 'click'
+        elif gap < 30:
+            gesture = st
+        else:
+            gesture = 'none'
+        
+        self.cursorState = (center_x, center_y, gesture)
+
+    def getCursorState(self) -> str:
+        _, _, st = self.cursorState
+        return st
 
     '''
     Helper Function to detect thumb orientation and whether the
@@ -192,11 +295,9 @@ class handDetector():
     def isLeft(self, lmList):
         if not lmList or len(lmList) <= 0:
             return False
-        
-        tipIds = [4, 8, 12, 16, 20]
 
-        pinkyTipLoc_x = lmList[tipIds[4]][1]
-        thumbTipLoc_x = lmList[tipIds[0]][1]
+        pinkyTipLoc_x = lmList[9][1]
+        thumbTipLoc_x = lmList[1][1]
 
         return thumbTipLoc_x < pinkyTipLoc_x
 
@@ -207,12 +308,10 @@ class handDetector():
     def detect(self, lmList, res):
         if not lmList or len(lmList) <= 0:
             return res
-        
-        tipIds = [4, 8, 12, 16, 20]
 
-        pinkyTipLoc_x = lmList[tipIds[4]][1]
-        thumbTipLoc_x = lmList[tipIds[0]][1]
-        thumbBaseLoc_x = lmList[tipIds[0] - 1][1]
+        pinkyTipLoc_x = lmList[9][1]
+        thumbTipLoc_x = lmList[1][1]
+        thumbBaseLoc_x = lmList[0][1]
 
         # Process the thumb
         if thumbTipLoc_x > pinkyTipLoc_x:
@@ -222,9 +321,9 @@ class handDetector():
 
         # Process other fingers
         # lmList is a list of lists of format: [node number, center_x, center_y]
-        for id in range(1,5):
-            tipLoc = lmList[tipIds[id]][2]
-            baseLoc = lmList[tipIds[id]-2][2]
+        for id in range(2,9,2):
+            tipLoc = lmList[id+1][2]
+            baseLoc = lmList[id][2]
             
             # y position of greater is more down
             if (baseLoc - tipLoc) > 0:

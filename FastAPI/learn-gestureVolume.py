@@ -35,22 +35,14 @@ while True:
     if not success:
         break
     
-    # frame = cv.flip(frame, 1)
-    frame = detector.findHands(frame, draw=False)
-    lmBothList, bb = detector.findBothHandLocations(frame)
-    
-    setMark = False
+    frame = cv.flip(frame, 1)
+    frame = cv.addWeighted(frame, 1.5, np.zeros(frame.shape, frame.dtype), 0, 0)
+    # frame = detector.findHands(frame, draw=False)
+    # lmBothList, bb = detector.findBothHandLocations(frame)
+    lmBothList, bb = detector.find2Hands(frame)
 
     if lmBothList and len(lmBothList) > 0:
         firstDetected, secondDetected = detector.getBothFingersUp(lmBothList)
-        
-        if len(firstDetected) > 3 and len(secondDetected) > 3:
-            if firstDetected[4] == 0 or secondDetected[4] == 0:
-                setMark = True
-            setMark = True
-
-        # print("first hand: ", firstDetected)
-        # print("second hand: ", secondDetected)
 
         for i in range(len(lmBothList)):
             lmList = lmBothList[i]
@@ -62,11 +54,13 @@ while True:
                 area = widthBox * heightBox
 
                 drawFlag = False
-                if 8000 < area < 40000:
+                if 10000 < area < 40000:
                     drawFlag = True
-                    gapLength, center_x, center_y = detector.findDistance(frame, lmList, 4, 8, setMark, draw=drawFlag)
+                    gapLength, center_x, center_y = detector.findDistance(frame, lmList, 1, 3, draw=drawFlag)
+                    detector.setCursorState(gapLength, center_x, center_y)
                     slider = np.interp(gapLength, [20, 200], [300, 150])
                     norm = np.interp(gapLength, [20, 200], [0, 100])
+                    print(detector.getCursorState())
                 else:
                     drawFlag = False
                  
