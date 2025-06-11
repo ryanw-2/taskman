@@ -56,11 +56,11 @@ while True:
                 drawFlag = False
                 if 10000 < area < 40000:
                     drawFlag = True
-                    gapLength, center_x, center_y = detector.findDistance(frame, lmList, 1, 3, draw=drawFlag)
-                    detector.setCursorState(gapLength, center_x, center_y)
-                    slider = np.interp(gapLength, [20, 200], [300, 150])
-                    norm = np.interp(gapLength, [20, 200], [0, 100])
-                    print(detector.getCursorState())
+                    gapIndex, center_x, center_y = detector.findDistance(frame, lmList, 1, 3, draw=drawFlag)
+                    if center_y < 150:
+                        detector.setCursorState(gapIndex, center_x, center_y)
+                        slider = np.interp(gapIndex, [20, 200], [300, 150])
+                        norm = np.interp(gapIndex, [20, 200], [0, 100])
                 else:
                     drawFlag = False
                  

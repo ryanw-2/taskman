@@ -66,22 +66,22 @@ async def websocket_endpoint(websocket: WebSocket):
             frame = cv.addWeighted(frame, 1.2, np.zeros(frame.shape, frame.dtype), 0, 0)
             lmBothList, bb = detector.find2Hands(frame)
 
-            gesture = 'none'
             gap_length = 50
             if lmBothList and len(lmBothList) > 0:
                 for lmList in lmBothList:
                     if lmList and detector.isLeft(lmList):
                         gap_length, center_x, center_y = detector.findDistance(frame, lmList, 1, 3, False)
-                        detector.setCursorState(gap_length, center_x, center_y)
-                        break
+                        if center_y < 160:
+                            detector.setCursorState(gap_length, center_x, center_y)
+                            break
             
-            gesture = detector.getCursorState()
-            print(gesture)
+            
+            gesture = detector.getCursorGesture()
             # Key component to send data over to the front-end
             await websocket.send_text(json.dumps({'gesture': gesture}))
 
             # Small delay to prevent overwhelming the client
-            await asyncio.sleep(0.01)
+            await asyncio.sleep(0.02)
 
     except WebSocketDisconnect:
         print("Client disconnected")

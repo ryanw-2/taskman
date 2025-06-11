@@ -28,7 +28,10 @@ class handDetector():
         self.mpDraw = mp.solutions.drawing_utils #type: ignore
         
         # Set up State
-        self.cursorState = (-1, -1, 'none')
+        self.starting_x = 0
+        self.starting_y = 0
+        self.cursorState = 'none'
+        self.cursorGesture = 'none'
     '''
     Draws nodes and connections on frame
     Returns frame
@@ -115,8 +118,6 @@ class handDetector():
                         xMax = int(lm.x * width)
 
                     if self.isValidId(id):
-                        center_x = int(lm.x * width)
-                        center_y = int(lm.y * height)
                         singleLmList.append([id, int(lm.x * width), int(lm.y * height)])
                 
                 bbList.append((xMin, yMin, xMax, yMax))
@@ -230,18 +231,21 @@ class handDetector():
         return gapLength, center_x, center_y
 
 
-    def setCursorState(self, gap, center_x, center_y) -> None:
+    def setCursorState(self, gapIndex, center_x, center_y) -> None:
         '''
         Detects clicks and hand swipes, and sets the cursor state
         accordingly
         '''
-        cx, cy, st = self.cursorState
+        gesture = 'none'
 
-        if gap < 30 and st == 'none':
-            gesture = 'click'
-        elif gap < 30 and st == 'click':
-            x_difference = center_x - cx
-            y_difference = center_y - cy
+        # initialize values
+        if gapIndex < 30 and self.cursorState == 'none':
+            self.starting_x = center_x
+            self.starting_y = center_y
+            self.cursorState = 'hover'
+        elif gapIndex > 30 and self.cursorState == 'hover':
+            x_difference = center_x - self.starting_x
+            y_difference = center_y - self.starting_y
 
             if x_difference > 15:
                 gesture = 'rightswipe'
@@ -253,16 +257,16 @@ class handDetector():
                 gesture = 'upswipe'
             else:
                 gesture = 'click'
-        elif gap < 30:
-            gesture = st
-        else:
-            gesture = 'none'
-        
-        self.cursorState = (center_x, center_y, gesture)
 
-    def getCursorState(self) -> str:
-        _, _, st = self.cursorState
-        return st
+            self.cursorGesture = gesture
+            self.cursorState = 'none'
+
+        
+
+    def getCursorGesture(self) -> str:
+        result = self.cursorGesture
+        self.cursorGesture = 'none'
+        return result
 
     '''
     Helper Function to detect thumb orientation and whether the
