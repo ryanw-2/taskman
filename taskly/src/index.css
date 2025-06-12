@@ -1,73 +1,154 @@
-@import "tailwindcss";
-/* Register the font once */
+/* =============================================================================
+   CUSTOM CSS VARIABLES & FONT CONFIGURATION
+   ============================================================================= */
+
+/* SF Pro Font Family Registration */
 @font-face {
   font-family: "SF Pro";
   src: url('./fonts/SF-Pro.ttf') format('truetype');
   font-style: normal;
-  font-weight: 100 900; /* Allows dynamic font-weight use */
-  font-display: swap;
+  font-weight: 100 900; /* Variable font weight support */
+  font-display: swap; /* Optimize font loading performance */
 }
 
-@theme {
-  --font-script: SF Pro;
-  
+/* =============================================================================
+   CSS CUSTOM PROPERTIES (CSS Variables)
+   ============================================================================= */
+
+:root {
+  /* ---------------------------------------------------------------------------
+     TYPOGRAPHY VARIABLES
+     --------------------------------------------------------------------------- */
+  --font-family-primary: "SF Pro", -apple-system, BlinkMacSystemFont, "Segoe UI", 
+                         Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-weight-medium: 500;
   --font-weight-bold: 800;
+
+  /* ---------------------------------------------------------------------------
+     SEA PALETTE (Sea-salt inspired)
+     Light, warm neutral tones - perfect for backgrounds and light elements
+     --------------------------------------------------------------------------- */
+  --color-sea-100: #393429;   /* Darkest - Deep warm brown */
+  --color-sea-200: #726752;   /* Dark - Muted olive brown */
+  --color-sea-300: #a49982;   /* Medium-dark - Warm taupe */
+  --color-sea-400: #cdc7ba;   /* Medium-light - Light taupe */
+  --color-sea-500: #f7f6f4;   /* Base - Off-white cream */
+  --color-sea-600: #f8f7f6;   /* Light - Very light cream */
+  --color-sea-700: #faf9f8;   /* Lighter - Nearly white */
+  --color-sea-800: #fcfbfa;   /* Very light - Almost white */
+  --color-sea-900: #fdfdfd;   /* Lightest - Pure white */
+
+  /* ---------------------------------------------------------------------------
+     TIMBER PALETTE (Timber-wolf inspired)
+     Cool, sophisticated grays - ideal for content areas
+     --------------------------------------------------------------------------- */
+  --color-timber-100: #2b2a24;   /* Darkest - Deep charcoal */
+  --color-timber-200: #575448;   /* Dark - Dark gray-brown */
+  --color-timber-300: #827e6d;   /* Medium-dark - Warm gray */
+  --color-timber-400: #a8a496;   /* Medium - Light warm gray */
+  --color-timber-500: #cbc9c1;   /* Base - Light gray-beige */
+  --color-timber-600: #d6d5ce;   /* Light - Very light gray */
+  --color-timber-700: #e0dfda;   /* Lighter - Off-white gray */
+  --color-timber-800: #ebeae7;   /* Very light - Near white */
+  --color-timber-900: #f5f4f3;   /* Lightest - Warm white */
+
+  /* ---------------------------------------------------------------------------
+     DRAB PALETTE (Drab dark brown inspired)
+     Rich, earthy tones - excellent for accents and headers
+     --------------------------------------------------------------------------- */
+  --color-drab-100: #100f0c;   /* Darkest - Almost black brown */
+  --color-drab-200: #1f1e18;   /* Dark - Very dark brown */
+  --color-drab-300: #2f2d24;   /* Medium-dark - Dark olive brown */
+  --color-drab-400: #3e3d30;   /* Medium - Olive brown */
+  --color-drab-500: #4f4d3d;   /* Base - Rich brown */
+  --color-drab-600: #78755c;   /* Light - Muted olive */
+  --color-drab-700: #9e9a81;   /* Lighter - Light olive */
+  --color-drab-800: #bebcab;   /* Very light - Beige */
+  --color-drab-900: #dfddd5;   /* Lightest - Light beige */
+
+  /* ---------------------------------------------------------------------------
+     JET PALETTE (Jet black inspired)
+     Deep, modern blacks - perfect for dark themes and contrast
+     --------------------------------------------------------------------------- */
+  --color-jet-100: #0a0a09;   /* Darkest - Pure black */
+  --color-jet-200: #141311;   /* Dark - Very dark gray */
+  --color-jet-300: #1d1d1a;   /* Medium-dark - Dark charcoal */
+  --color-jet-400: #272622;   /* Medium - Charcoal */
+  --color-jet-500: #31302b;   /* Base - Dark gray-brown */
+  --color-jet-600: #5e5c52;   /* Light - Medium gray */
+  --color-jet-700: #8a8779;   /* Lighter - Light gray-brown */
+  --color-jet-800: #b1afa6;   /* Very light - Light gray */
+  --color-jet-900: #d8d7d2;   /* Lightest - Very light gray */
+
+  /* ---------------------------------------------------------------------------
+     BATTLESHIP PALETTE (Battleship gray inspired)
+     Cool, professional grays - ideal for UI elements and borders
+     --------------------------------------------------------------------------- */
+  --color-battleship-100: #1e1f1d;   /* Darkest - Deep cool gray */
+  --color-battleship-200: #3d3d3b;   /* Dark - Dark gray */
+  --color-battleship-300: #5b5c58;   /* Medium-dark - Medium gray */
+  --color-battleship-400: #7a7b76;   /* Medium - Gray */
+  --color-battleship-500: #979893;   /* Base - Light gray */
+  --color-battleship-600: #acadaa;   /* Light - Very light gray */
+  --color-battleship-700: #c1c2bf;   /* Lighter - Off-white gray */
+  --color-battleship-800: #d6d6d4;   /* Very light - Light off-white */
+  --color-battleship-900: #eaebea;   /* Lightest - Nearly white */
 }
 
-@theme {
-  /* Sea-salt → sea */
-  --color-sea-100: #393429;
-  --color-sea-200: #726752;
-  --color-sea-300: #a49982;
-  --color-sea-400: #cdc7ba;
-  --color-sea-500: #f7f6f4;
-  --color-sea-600: #f8f7f6;
-  --color-sea-700: #faf9f8;
-  --color-sea-800: #fcfbfa;
-  --color-sea-900: #fdfdfd;
+/* =============================================================================
+   BASE STYLES
+   ============================================================================= */
 
-  /* Timber-wolf → timber */
-  --color-timber-100: #2b2a24;
-  --color-timber-200: #575448;
-  --color-timber-300: #827e6d;
-  --color-timber-400: #a8a496;
-  --color-timber-500: #cbc9c1;
-  --color-timber-600: #d6d5ce;
-  --color-timber-700: #e0dfda;
-  --color-timber-800: #ebeae7;
-  --color-timber-900: #f5f4f3;
+/* Apply font family globally */
+body {
+  font-family: var(--font-family-primary);
+  font-weight: 400;
+  line-height: 1.6;
+}
 
-  /* Drab-dark-brown → drab */
-  --color-drab-100: #100f0c;
-  --color-drab-200: #1f1e18;
-  --color-drab-300: #2f2d24;
-  --color-drab-400: #3e3d30;
-  --color-drab-500: #4f4d3d;
-  --color-drab-600: #78755c;
-  --color-drab-700: #9e9a81;
-  --color-drab-800: #bebcab;
-  --color-drab-900: #dfddd5;
+/* Headings with custom font weights */
+h1, h2 {
+  font-family: var(--font-family-primary);
+  font-weight: var(--font-weight-bold);
+  line-height: 1.2;
+}
 
-  /* Jet → jet */
-  --color-jet-100: #0a0a09;
-  --color-jet-200: #141311;
-  --color-jet-300: #1d1d1a;
-  --color-jet-400: #272622;
-  --color-jet-500: #31302b;
-  --color-jet-600: #5e5c52;
-  --color-jet-700: #8a8779;
-  --color-jet-800: #b1afa6;
-  --color-jet-900: #d8d7d2;
+/* Headings with custom font weights */
+h3, h4, h5, h6 {
+  font-family: var(--font-family-primary);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.2;
+}
 
-  /* Battleship-gray → battleship */
-  --color-battleship-100: #1e1f1d;
-  --color-battleship-200: #3d3d3b;
-  --color-battleship-300: #5b5c58;
-  --color-battleship-400: #7a7b76;
-  --color-battleship-500: #979893;
-  --color-battleship-600: #acadaa;
-  --color-battleship-700: #c1c2bf;
-  --color-battleship-800: #d6d6d4;
-  --color-battleship-900: #eaebea;
+/* Medium weight text */
+.font-medium {
+  font-weight: var(--font-weight-medium);
+}
+
+.font-bold {
+  font-weight: var(--font-weight-bold);
+}
+
+/* =============================================================================
+   UTILITY CLASSES FOR COLOR USAGE
+   ============================================================================= */
+
+/* Example utility classes - uncomment and modify as needed */
+/*
+.bg-sea-500 { background-color: var(--color-sea-500); }
+.bg-timber-500 { background-color: var(--color-timber-500); }
+.bg-drab-500 { background-color: var(--color-drab-500); }
+.bg-jet-500 { background-color: var(--color-jet-500); }
+.bg-battleship-500 { background-color: var(--color-battleship-500); }
+
+.text-sea-100 { color: var(--color-sea-100); }
+.text-timber-100 { color: var(--color-timber-100); }
+.text-drab-100 { color: var(--color-drab-100); }
+.text-jet-100 { color: var(--color-jet-100); }
+.text-battleship-100 { color: var(--color-battleship-100); }
+*/
+
+html, body {
+  margin: 0;
+  padding: 0;
 }

@@ -11,7 +11,6 @@ import Dashboard from './Pages/Dashboard'
 function App() {
   return (
     <div className="App">
-      <h1>Hello World! This is working!</h1>
       <Dashboard />
     </div>
   );
