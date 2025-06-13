@@ -1,39 +1,29 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, act } from "react";
 import "./Dashboard.css";
+import timer from "../assets/timer_icon.png";
+import note from "../assets/note_icon.png";
+
+const MONTH_LIST = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
 
 const Dashboard = () => {
   const [gesture, setGesture] = useState("none");
-  const [buttonIndex, setButtonIndex] = useState(0);
+  const [activeIndex, setActiveIndex] = useState(0);
 
-  let currentTime = new Date();
-  let hours = currentTime.getHours() % 12;
-  let minutes = String(currentTime.getMinutes()).padStart(2, '0')
-  let period = "AM";
+  const itemRefList = useRef([]);
+  itemRefList.current = Array(5).fill().map((_, i) => itemRefList.current[i] || React.createRef());
 
-  const monthList = [
-    "January",
-    "February",
-    "March",
-    "April",
-    "May",
-    "June",
-    "July",
-    "August",
-    "September",
-    "October",
-    "November",
-    "December",
-  ];
-  let month = monthList[currentTime.getMonth()];
-  let day = currentTime.getDate();
-  let year = currentTime.getFullYear();
-
-  if (hours >= 12) {
-    period = "PM";
-  }
-
-  const buttonRefList = useRef([]);
-  buttonRefList.current = [useRef(null), useRef(null)];
+  // --- Time and Date Logic (can be simplified) ---
+  const currentTime = new Date();
+  const hours = currentTime.getHours();
+  const period = hours >= 12 ? "PM" : "AM";
+  const displayHours = hours % 12 || 12; // Handle midnight (0) as 12
+  const minutes = String(currentTime.getMinutes()).padStart(2, "0");
+  const month = MONTH_LIST[currentTime.getMonth()];
+  const day = currentTime.getDate();
+  const year = currentTime.getFullYear();
 
   useEffect(() => {
     // Key component used by front end to connect
@@ -45,12 +35,7 @@ const Dashboard = () => {
 
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
-      setGesture((prevGesture) => {
-        if (data.gesture === "none") {
-          return "none";
-        }
-        return data.gesture;
-      });
+      setGesture(data.gesture);
     };
 
     ws.onclose = () => {
@@ -72,29 +57,42 @@ const Dashboard = () => {
     }
 
     if (gesture === "click") {
-      const currentButtonRef = buttonRefList.current[buttonIndex];
-      if (currentButtonRef && currentButtonRef.current) {
-        currentButtonRef.current.click();
+      const currentItemRef = itemRefList.current[activeIndex];
+      if (currentItemRef && currentItemRef.current) {
+        currentItemRef.current.click();
       }
     } else if (gesture === "rightswipe") {
-      setButtonIndex((prevIndex) =>
-        prevIndex < buttonRefList.current.length - 1 ? prevIndex + 1 : prevIndex
+      setActiveIndex((prevIndex) =>
+        prevIndex < itemRefList.current.length - 1 ? prevIndex + 1 : 0
       );
     } else if (gesture === "leftswipe") {
-      setButtonIndex((prevIndex) =>
-        prevIndex > 0 ? prevIndex - 1 : prevIndex
+      setActiveIndex((prevIndex) =>
+        prevIndex > 0 ? prevIndex - 1 : itemRefList.current.length - 1
       );
     }
-  }, [gesture]);
+    
+    setGesture("none");
+  }, [gesture, activeIndex]);
 
-  const handleButtonClick = () => {
-    alert(`Button ${index + 1} was clicked!`, "");
+  const handleItemClick = (index) => {
+    alert(`Button ${index} was clicked!`, "");
+    setActiveIndex(index)
   };
 
+  const gridItems = [
+    { id: "Calendar", title: `${month} ${day}, ${year}`, className: "calendar" },
+    { id: "Smart Search", title: "Taskly Ask", className: "smart-search" },
+    { id: "Checklist", title: "Checklist", className: "checklist" },
+    { id: "Timer", content: <img src={timer} alt="timer icon" />, className: "secondary-widget1" },
+    { id: "Notepad", content: <img src={note} alt="notepad icon" />, className: "secondary-widget2" },
+  ];
+  
   return (
     //Creates full screen container
     <div className="dashboard-container">
+
       <div className="grid-container">
+        {/* Static Items ---------------------------------------- */}
         {/* Top Name/Greeting */}
         <div className="grid-item name-greeting">
           <h3>Welcome, Ryan</h3>
@@ -104,7 +102,7 @@ const Dashboard = () => {
         <div className="grid-item stat-1">
           <h3>
             <span>
-              {hours}:{minutes} {period}
+              {displayHours}:{minutes} {period}
             </span>
           </h3>
         </div>
@@ -112,34 +110,36 @@ const Dashboard = () => {
         {/* Top Stat 2 */}
         <div className="grid-item stat-2"></div>
 
-        {/* Calendar */}
-        <div className="grid-item calendar">
-          <h3>
-            <span>{month} {day}, {year}</span>
-          </h3>
-        </div>
+        {/* Dynamic Items ---------------------------------------- */}
 
-        {/* Smart Search */}
-        <div className="grid-item smart-search">
-          <h3>Taskly Ask</h3>
-        </div>
+        {
+          gridItems.map((item, index) => (
+            <div
+              key={item.id}
+              id={item.id}
+              ref={itemRefList.current[index]}
+              onClick={ () => handleItemClick(index)}
+              className={`grid-dyn-item ${item.className} ${activeIndex === index ? 'active' : ''}`}
+            >
+              {item.title ? <h3><span>{item.title}</span></h3> : item.content}
+            </div>
+          ))
+        } 
+      </div>
+      
 
-        {/* Check List */}
-        <div className="grid-item checklist">
-          <h3>Checklist</h3>
-        </div>
-
-        {/* Secondary Widgets */}
-        <div className="grid-item secondary-widgets"></div>
-
-        {/* Bottom Information */}
-        <div className="grid-item bottom-info">
-          <p>
-            Current Gesture: <span className="font-bold">{gesture}</span>
-          </p>
-        </div>
+      {/* Bottom Information -------------------------------------*/}
+      <div className="bottom-info">
+        <p>
+        Active Module: <span className="font-bold">{gridItems[activeIndex].id}</span>
+        </p>
+      </div>
+      <div className="next-actions">
+        {activeIndex > 0 ? <p className="next-actions">Swipe Left: {gridItems[activeIndex - 1].id}</p> : <p className="next-actions">Swipe Left: {gridItems[gridItems.length - 1].id}</p>}
+        {activeIndex < 4 ? <p className="next-actions">Swipe Right: {gridItems[activeIndex + 1].id}</p> : <p className="next-actions">Swipe Left: {gridItems[0].id}</p>}
       </div>
     </div>
+    
   );
 };
 
