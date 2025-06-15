@@ -1,0 +1,54 @@
+.expanded-view-overlay {
+  position: fixed; /* Cover the entire screen */
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(64, 64, 64, 0.7); /* Semi-transparent black overlay */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000; /* Ensure it's on top of everything */
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+.expanded-view-content {
+  background: #fcfbfa; /* A dark theme background */
+  padding: 35px;
+  border-radius: 12px;
+  width: 70%;
+  height: 70%;
+  max-width: 1200px;
+  position: relative;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  transform: scale(0.90);
+  animation: scaleUp 0.3s ease-in-out;
+}
+
+.close-button {
+  position: absolute;
+  top: 15px;
+  right: 20px;
+  background: none;
+  border: none;
+  color: rgba(64, 64, 64, 0.7);
+  font-size: 2.5rem;
+  cursor: pointer;
+}
+
+.item-details {
+  color: #e2e8f0;
+  margin-top: 10px;
+  font-size: 1.2rem;
+}
+
+/* Simple keyframe animations */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes scaleUp {
+  from { transform: scale(0.9); opacity: 0; }
+  to { transform: scale(.9); opacity: 1; }
+}

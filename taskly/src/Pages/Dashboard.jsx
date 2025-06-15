@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef, act } from "react";
 import "./Dashboard.css";
-import timer from "../assets/timer_icon.png";
-import note from "../assets/note_icon.png";
+import ExpandedItemView from "./ExpandedItemView";
+import { motion, AnimatePresence } from 'framer-motion';
+import ItemContent from "./ItemContent";
 
 const MONTH_LIST = [
   "January", "February", "March", "April", "May", "June",
@@ -11,6 +12,7 @@ const MONTH_LIST = [
 const Dashboard = () => {
   const [gesture, setGesture] = useState("none");
   const [activeIndex, setActiveIndex] = useState(0);
+  const [expandedIndex, setExpandedIndex] = useState(null);
 
   const itemRefList = useRef([]);
   itemRefList.current = Array(5).fill().map((_, i) => itemRefList.current[i] || React.createRef());
@@ -77,14 +79,19 @@ const Dashboard = () => {
   const handleItemClick = (index) => {
     alert(`Button ${index} was clicked!`, "");
     setActiveIndex(index)
+    setExpandedIndex(index)
+  };
+
+  const handleCloseExpanded = () => {
+    setExpandedIndex(null);
   };
 
   const gridItems = [
     { id: "Calendar", title: `${month} ${day}, ${year}`, className: "calendar" },
     { id: "Smart Search", title: "Taskly Ask", className: "smart-search" },
     { id: "Checklist", title: "Checklist", className: "checklist" },
-    { id: "Timer", content: <img src={timer} alt="timer icon" />, className: "secondary-widget1" },
-    { id: "Notepad", content: <img src={note} alt="notepad icon" />, className: "secondary-widget2" },
+    { id: "Timer", content: null, className: "secondary-widget1" },
+    { id: "Notepad", content: null, className: "secondary-widget2" },
   ];
   
   return (
@@ -112,21 +119,31 @@ const Dashboard = () => {
 
         {/* Dynamic Items ---------------------------------------- */}
 
-        {
-          gridItems.map((item, index) => (
-            <div
+        {gridItems.map((item, index) => (
+            <motion.div
               key={item.id}
               id={item.id}
               ref={itemRefList.current[index]}
               onClick={ () => handleItemClick(index)}
               className={`grid-dyn-item ${item.className} ${activeIndex === index ? 'active' : ''}`}
+              style={{ visibility: expandedIndex === index ? 'hidden' : 'visible' }}
             >
-              {item.title ? <h3><span>{item.title}</span></h3> : item.content}
-            </div>
+              <ItemContent item={item} layoutId={`shared-content-${item.id}`}/>
+            </motion.div>
           ))
         } 
       </div>
       
+      <AnimatePresence>
+        {expandedIndex !== null && (
+          // We pass the unique layoutId to our component as a prop
+          <ExpandedItemView
+            layoutId={`shared-content-${gridItems[expandedIndex].id}`}
+            item={gridItems[expandedIndex]}
+            onClose={handleCloseExpanded}
+          />
+        )}
+      </AnimatePresence>
 
       {/* Bottom Information -------------------------------------*/}
       <div className="bottom-info">

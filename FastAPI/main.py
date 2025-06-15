@@ -2,7 +2,6 @@ import asyncio
 import numpy as np
 import cv2 as cv
 import uvicorn
-import threading
 import json
 from typing import List, Optional, Annotated, Tuple, AsyncGenerator
 
@@ -11,9 +10,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
-from contextlib import asynccontextmanager
-# from database import SessionLocal, engine, get_db
-# import models
+from database import SessionLocal, engine
+import models
 
 import handTrackingModule as htm
 
@@ -41,6 +39,59 @@ app.add_middleware(
     allow_methods=['*'],
     allow_headers=['*']
 )
+
+class TaskBase(BaseModel):
+    title: str
+    desc: str
+    priority: str
+    complete: bool
+
+class TaskModel(TaskBase):
+    id: int
+
+    # Pydantic expects to read data from
+    # a dictionary by default
+    # However, SQL Alchemy uses Object Relational Mapper ORM
+    # my_orm_object.title instead of my_dict['title']
+    class Config:
+        orm_mode = True
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+# Session is a type hint, Depends tells FastAPI to first call get_db
+# The value of get_db is then injected as an argument into the endpoints
+db_dependency = Annotated[Session, Depends(get_db)]
+# creating our database
+models.Base.metadata.create_all(bind=engine)
+
+
+@app.post("/checklist/")
+async def create_task(tasklist: TaskBase, db: db_dependency):
+    """
+    Obtains the database from database, updates it, and refreshes it
+    """
+    # model dump converts library into dictionary
+    # ** is python's unpacking operator
+    db_tasklist = models.TaskList(**tasklist.model_dump())
+    db.add(db_tasklist)
+    db.commit()
+    db.refresh(db_tasklist)
+    return db_tasklist
+
+@app.get("/checklist/", response_model=List[TaskModel])
+async def read_tasklist(db: db_dependency, skip: int = 0, limit: int = 10):
+    """
+    Reads up to limit (10) items from the database
+    """
+    tasklist = db.query(models.TaskList).offset(skip).limit(limit).all()
+    return tasklist
+
+
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
@@ -88,6 +139,7 @@ async def websocket_endpoint(websocket: WebSocket):
     finally:
         cap.release()
         print("Camera released")
+
 
 
 
