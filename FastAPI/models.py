@@ -1,6 +1,6 @@
 from database import Base
 from sqlalchemy.orm import relationship
-from datetime import datetime, timezone
+from datetime import datetime, timezone, date
 from sqlalchemy import Column, Integer, String, Boolean, Float, DateTime, ForeignKey, Text
 
 # User - user, pass, email
@@ -34,7 +34,9 @@ from sqlalchemy import Column, Integer, String, Boolean, Float, DateTime, Foreig
 
 #     owner_id = Column(Integer, ForeignKey("users.id"))
     
-
+"""
+CHECKLIST TABLE
+"""
 class TaskList(Base):
     __tablename__ = 'tasklist'
 
@@ -46,6 +48,15 @@ class TaskList(Base):
 
     # owner_id = Column(Integer, ForeignKey("users.id"))
 
+class EventList(Base):
+    __tablename__ = 'eventlist'
+
+    id = Column(Integer, primary_key=True, index=True)
+    title= Column(String(100))
+    desc = Column(String(255))
+    link = Column(String(255))
+    date = Column(DateTime(timezone=True), nullable=False)
+    
 # class NoteList(Base):
 #     __tablename__ = 'notelist'
 

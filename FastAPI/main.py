@@ -1,19 +1,43 @@
+# --- Standard Library Imports ---
 import asyncio
-import numpy as np
-import cv2 as cv
-import uvicorn
 import json
-from typing import List, Optional, Annotated, Tuple, AsyncGenerator
+import os
+from datetime import datetime, time, timedelta
+from typing import Annotated, AsyncGenerator, List, Optional, Tuple
 
-from fastapi import FastAPI, Response, HTTPException, Depends, WebSocket, WebSocketDisconnect
+# --- Third-Party Imports ---
+import cv2 as cv
+import numpy as np
+import pytz
+import uvicorn
+from dotenv import load_dotenv
+from fastapi import (Depends, FastAPI, HTTPException, Response, WebSocket,
+                   WebSocketDisconnect)
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
+from sqlalchemy import Date, cast
 from sqlalchemy.orm import Session
-from database import SessionLocal, engine
-import models
+"""
+GCP VERTEX
+"""
+from google.cloud import aiplatform
+from google.cloud.aiplatform import gapic
 
+from google.cloud import speech_v1p1beta1 as speech
+# from google.cloud.aiplatform.gapic import prediction_service_client
+from google.protobuf import json_format
+from google.protobuf.struct_pb2 import Value
+import aiohttp
+
+# --- Local Application Imports ---
 import handTrackingModule as htm
+import models
+from database import SessionLocal, engine
+
+# --- Load Environment Variables ---
+# This should be called once, right after all imports.
+load_dotenv()
 
 '''
 Create database tables and initialize app
@@ -39,22 +63,20 @@ app.add_middleware(
     allow_methods=['*'],
     allow_headers=['*']
 )
+"""
+------------------------ SPEECH TO TEXT CONFIG -------------------------
+"""
+speech_config = speech.RecognitionConfig(
+    encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16,
+    sample_rate_hertz=16000,
+    language_code="en-US",
+    enable_automatic_punctuation=True,
+    model="telephony",
+)
 
-class TaskBase(BaseModel):
-    title: str
-    desc: str
-    priority: str
-    complete: bool
-
-class TaskModel(TaskBase):
-    id: int
-
-    # Pydantic expects to read data from
-    # a dictionary by default
-    # However, SQL Alchemy uses Object Relational Mapper ORM
-    # my_orm_object.title instead of my_dict['title']
-    class Config:
-        orm_mode = True
+"""
+------------------------ DATABASE CONFIG -------------------------
+"""
 
 def get_db():
     db = SessionLocal()
@@ -69,6 +91,132 @@ db_dependency = Annotated[Session, Depends(get_db)]
 # creating our database
 models.Base.metadata.create_all(bind=engine)
 
+"""
+------------------------ PYDANTIC MODELS -------------------------
+"""
+class TaskBase(BaseModel):
+    title: str
+    desc: str
+    priority: str
+    complete: bool
+
+class CompleteTaskBase(BaseModel):
+    complete: bool
+
+    class Config:
+        from_attributes = True
+
+class TaskModel(TaskBase):
+    id: int
+
+    # Pydantic expects to read data from
+    # a dictionary by default
+    # However, SQL Alchemy uses Object Relational Mapper ORM
+    # my_orm_object.title instead of my_dict['title']
+    class Config:
+        from_attributes = True
+
+class EventBase(BaseModel):
+    title: str
+    desc: str
+    link: str
+    date: datetime
+
+class EventModel(EventBase):
+    id: int
+
+    class Config:
+        from_attributes = True
+
+"""
+------------------------ ENDPOINTS -------------------------
+"""
+
+@app.post("/calendar/")
+async def create_eventlist(eventlist: EventBase, db: db_dependency):
+    """
+    Obtains the database from database, updates it, and refreshes it
+    """
+    # model dump converts library into dictionary
+    # ** is python's unpacking operator
+    db_eventlist = models.EventList(**eventlist.model_dump())
+    db.add(db_eventlist)
+    db.commit()
+    db.refresh(db_eventlist)
+    return db_eventlist
+
+@app.get("/calendar/today/", response_model=List[EventModel])
+async def read_today_eventlist(db: db_dependency, skip: int = 0, limit: int = 20):
+    """
+    Reads Today's items from the database, based on the current date
+    in the Pacific Timezone, compatible with SQLite.
+    """
+    pacific_tz = pytz.timezone("America/Los_Angeles")
+
+    start_of_today_pacific = datetime.now(pacific_tz).replace(hour=0, minute=0, second=0, microsecond=0)
+    start_of_tomorrow_pacific = start_of_today_pacific + timedelta(days=1)
+
+    start_of_today_utc = start_of_today_pacific.astimezone(pytz.utc)
+    start_of_tomorrow_utc = start_of_tomorrow_pacific.astimezone(pytz.utc)
+
+    eventlist = db.query(models.EventList).filter(
+        models.EventList.date >= start_of_today_utc,
+        models.EventList.date < start_of_tomorrow_utc
+    ).offset(skip).limit(limit).all()
+
+    return eventlist
+
+@app.get("/calendar/month/", response_model=List[EventModel])
+async def read_month_eventlist(db: db_dependency, skip: int = 0, limit: int = 1000):
+    """
+    Reads this Month's items from the database, based on the current date
+    in the Pacific Timezone, compatible with SQLite.
+    """
+    pacific_tz = pytz.timezone("America/Los_Angeles")
+
+    this_month = datetime.now(pacific_tz).month
+    next_month = this_month + 1 if this_month < 13 else 1
+    start_of_month_pacific = datetime.now(pacific_tz).replace(month=this_month, minute=0, second=0, microsecond=0)
+    start_of_next_month_pacific = datetime.now(pacific_tz).replace(month=next_month, minute=0, second=0, microsecond=0)
+
+    start_of_month_utc = start_of_month_pacific.astimezone(pytz.utc)
+    start_of_next_month_utc = start_of_next_month_pacific.astimezone(pytz.utc)
+
+    eventlist = db.query(models.EventList).filter(
+        models.EventList.date >= start_of_month_utc,
+        models.EventList.date < start_of_next_month_utc
+    ).offset(skip).limit(limit).all()
+
+    return eventlist
+
+@app.get("/calendar/", response_model=List[EventModel])
+async def read_eventlist(db: db_dependency, skip: int = 0, limit: int = 100):
+    """
+    Reads all items up to limit (100) items from the database
+    """
+    eventlist = db.query(models.EventList).offset(skip).limit(limit).all()
+    return eventlist
+
+@app.delete("/calendar/clear-all")
+async def clear_all_events(db: db_dependency):
+    """
+    Deletes all events from the eventlist table.
+    USE WITH CAUTION: This action is irreversible.
+    """
+    try:
+        # Perform a bulk delete on the EventList table
+        num_rows_deleted = db.query(models.EventList).delete(synchronize_session=False)
+        
+        # Commit the transaction to make the changes permanent
+        db.commit()
+        
+        # Return a success message
+        return {"message": f"Successfully deleted {num_rows_deleted} events."}
+    except Exception as e:
+        # If anything goes wrong, roll back the transaction
+        db.rollback()
+        # And raise an HTTP exception
+        raise HTTPException(status_code=500, detail=f"An error occurred: {e}")
 
 @app.post("/checklist/")
 async def create_task(tasklist: TaskBase, db: db_dependency):
@@ -82,6 +230,23 @@ async def create_task(tasklist: TaskBase, db: db_dependency):
     db.commit()
     db.refresh(db_tasklist)
     return db_tasklist
+
+@app.patch("/checklist/{task_id}", response_model=TaskModel)
+async def complete_task(task_id: int, taskUpdate: CompleteTaskBase, db: db_dependency):
+    """
+    Updates the completeness of a task
+    """
+    # model dump converts library into dictionary
+    # ** is python's unpacking operator
+    db_task = db.query(models.TaskList).filter(models.TaskList.id == task_id).first()
+    if db_task is None:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    setattr(db_task, 'complete', taskUpdate.complete)
+
+    db.commit()
+    db.refresh(db_task)
+    return db_task
 
 @app.get("/checklist/", response_model=List[TaskModel])
 async def read_tasklist(db: db_dependency, skip: int = 0, limit: int = 10):

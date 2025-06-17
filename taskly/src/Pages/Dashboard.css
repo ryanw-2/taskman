@@ -54,6 +54,7 @@
 .grid-item {
   border-radius: 0.5rem; /* rounded-lg equivalent */
   transition: all 300ms ease-in-out;
+  overflow: hidden;
 }
 
 .grid-dyn-item {
@@ -62,6 +63,7 @@
 
   border-radius: 0.5rem; /* rounded-lg equivalent */
   transition: all 300ms ease-in-out;
+  overflow: hidden;
 }
 
 .grid-dyn-item.active {

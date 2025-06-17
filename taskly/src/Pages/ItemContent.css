@@ -2,3 +2,84 @@
     width: 60px;
     height: auto;
 }
+
+/* The main container for the list of cards */
+.task-list-container{
+  display: flex;
+  flex-direction: column; /* Stack the cards vertically */
+  width: 100%;
+}
+
+/* Styling for each individual task card */
+.task-card {
+  padding: 16px;
+  /* This creates the horizontal separator you wanted between cards */
+  border-bottom: 1px solid #e2e8f0; 
+  transition: background-color 0.2s ease-in-out;
+}
+
+/* A subtle hover effect for interactivity */
+.task-card.selected {
+  background-color: #f7fafc; /* A very light background tint */
+  border-left: 4px solid #4299e1; /* A blue left border to highlight */
+  transform: scale(1.01); /* Slightly grow the card */
+}
+
+/* Styling for the top part of the card (checkbox and title) */
+.task-card-title {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12px; /* Space between title and details */
+}
+
+.task-card-title h4 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #2d3748;
+}
+
+/* Style for the checkbox */
+.task-checkbox {
+  margin-right: 12px;
+  width: 18px;
+  height: 18px;
+}
+
+/* Strikethrough for completed task titles */
+.task-card-title h4.completed {
+  text-decoration: line-through;
+  color: #718096;
+}
+
+/* Container for the description and other metadata */
+.task-card-details {
+  padding-left: 30px; /* Indent details to align with title text */
+}
+
+.task-description {
+  margin: 0 0 12px 0;
+  font-size: 0.95rem;
+  color: #4a5568;
+}
+
+/* Flex container for metadata like priority and status */
+.task-meta {
+  display: flex;
+  align-items: center;
+  gap: 20px; /* Space between priority and status */
+  font-size: 0.85rem;
+  color: #718096;
+}
+
+/* Re-using the priority badge style from before */
+.priority-badge {
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-weight: bold;
+  color: white;
+}
+
+.priority-high { background-color: #e53e3e; }
+.priority-medium { background-color: #dd6b20; }
+.priority-low { background-color: #38a169; }

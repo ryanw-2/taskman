@@ -1,12 +1,23 @@
 import React, { useState, useEffect, useRef, act } from "react";
 import "./Dashboard.css";
+import api from "../API";
 import ExpandedItemView from "./ExpandedItemView";
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from "framer-motion";
 import ItemContent from "./ItemContent";
 
 const MONTH_LIST = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
 ];
 
 const Dashboard = () => {
@@ -14,8 +25,14 @@ const Dashboard = () => {
   const [activeIndex, setActiveIndex] = useState(0);
   const [expandedIndex, setExpandedIndex] = useState(null);
 
+  // --- CHECKLIST-SPECIFIC STATE IS NOW IN THE DASHBOARD ---
+  const [tasklist, setTasklist] = useState([]);
+  const [selectedTaskIndex, setSelectedTaskIndex] = useState(0);
+
   const itemRefList = useRef([]);
-  itemRefList.current = Array(5).fill().map((_, i) => itemRefList.current[i] || React.createRef());
+  itemRefList.current = Array(5)
+    .fill()
+    .map((_, i) => itemRefList.current[i] || React.createRef());
 
   // --- Time and Date Logic (can be simplified) ---
   const currentTime = new Date();
@@ -26,6 +43,44 @@ const Dashboard = () => {
   const month = MONTH_LIST[currentTime.getMonth()];
   const day = currentTime.getDate();
   const year = currentTime.getFullYear();
+
+  // --- API & DATA HANDLING LIVES IN THE PARENT ---
+  const fetchTasklist = async () => {
+    try {
+      const response = await api.get("/checklist/");
+      setTasklist(response.data);
+    } catch (error) {
+      console.error("Failed to fetch tasklist:", error);
+    }
+  };
+
+  const handleToggleComplete = async (taskToUpdate) => {
+    const newStatus = !taskToUpdate.complete;
+    try {
+      setTasklist((prev) =>
+        prev.map((t) =>
+          t.id === taskToUpdate.id ? { ...t, complete: newStatus } : t
+        )
+      );
+      await api.patch(`/checklist/${taskToUpdate.id}`, { complete: newStatus });
+    } catch (error) {
+      console.error("Failed to update task:", error);
+      setTasklist((prev) =>
+        prev.map((t) =>
+          t.id === taskToUpdate.id ? { ...t, complete: !newStatus } : t
+        )
+      );
+    }
+  };
+
+  const handleTaskSubmit = async (newTaskData) => {
+    await api.post("/checklist/", newTaskData);
+    fetchTasklist(); // Re-fetch to get the new list with the new ID
+  };
+  
+  useEffect(() => {
+    fetchTasklist();
+  }, []);
 
   useEffect(() => {
     // Key component used by front end to connect
@@ -57,47 +112,73 @@ const Dashboard = () => {
     if (gesture === "none") {
       return;
     }
-
-    if (gesture === "click") {
-      const currentItemRef = itemRefList.current[activeIndex];
-      if (currentItemRef && currentItemRef.current) {
-        currentItemRef.current.click();
+    // We are in Dashboard View
+    if (expandedIndex == null) {
+      if (gesture === "click") {
+        const currentItemRef = itemRefList.current[activeIndex];
+        if (currentItemRef && currentItemRef.current) {
+          currentItemRef.current.click();
+        }
+      } else if (gesture === "rightswipe") {
+        setActiveIndex((prevIndex) =>
+          prevIndex < itemRefList.current.length - 1 ? prevIndex + 1 : 0
+        );
+      } else if (gesture === "leftswipe") {
+        setActiveIndex((prevIndex) =>
+          prevIndex > 0 ? prevIndex - 1 : itemRefList.current.length - 1
+        );
       }
-    } else if (gesture === "rightswipe") {
-      setActiveIndex((prevIndex) =>
-        prevIndex < itemRefList.current.length - 1 ? prevIndex + 1 : 0
-      );
-    } else if (gesture === "leftswipe") {
-      setActiveIndex((prevIndex) =>
-        prevIndex > 0 ? prevIndex - 1 : itemRefList.current.length - 1
-      );
     }
-    
+    // We are in Expanded View
+    else {
+      // --- Gestures for CHECKLIST Expanded View ---
+      if (gridItems[expandedIndex].id === "Checklist") {
+        if (gesture === "downswipe") {
+          setSelectedTaskIndex((prev) =>
+            prev < tasklist.length - 1 ? prev + 1 : 0
+          );
+        } else if (gesture === "upswipe") {
+          setSelectedTaskIndex((prev) =>
+            prev > 0 ? prev - 1 : tasklist.length - 1
+          );
+        } else if (gesture === "click") {
+          if (tasklist[selectedTaskIndex]) {
+            handleToggleComplete(tasklist[selectedTaskIndex]);
+          }
+        }
+      }
+      if (gesture === "fist") handleCloseExpanded();
+    }
+
     setGesture("none");
-  }, [gesture, activeIndex]);
+  }, [gesture]);
 
   const handleItemClick = (index) => {
     alert(`Button ${index} was clicked!`, "");
-    setActiveIndex(index)
-    setExpandedIndex(index)
+    setActiveIndex(index);
+    setExpandedIndex(index);
   };
 
   const handleCloseExpanded = () => {
     setExpandedIndex(null);
   };
 
+  // DATA
   const gridItems = [
-    { id: "Calendar", title: `${month} ${day}, ${year}`, className: "calendar" },
+    {
+      id: "Calendar",
+      title: `${month} ${day}, ${year}`,
+      className: "calendar",
+    },
     { id: "Smart Search", title: "Taskly Ask", className: "smart-search" },
     { id: "Checklist", title: "Checklist", className: "checklist" },
     { id: "Timer", content: null, className: "secondary-widget1" },
     { id: "Notepad", content: null, className: "secondary-widget2" },
   ];
-  
+
   return (
     //Creates full screen container
     <div className="dashboard-container">
-
       <div className="grid-container">
         {/* Static Items ---------------------------------------- */}
         {/* Top Name/Greeting */}
@@ -120,27 +201,37 @@ const Dashboard = () => {
         {/* Dynamic Items ---------------------------------------- */}
 
         {gridItems.map((item, index) => (
-            <motion.div
-              key={item.id}
-              id={item.id}
-              ref={itemRefList.current[index]}
-              onClick={ () => handleItemClick(index)}
-              className={`grid-dyn-item ${item.className} ${activeIndex === index ? 'active' : ''}`}
-              style={{ visibility: expandedIndex === index ? 'hidden' : 'visible' }}
-            >
-              <ItemContent item={item} layoutId={`shared-content-${item.id}`}/>
-            </motion.div>
-          ))
-        } 
+          <motion.div
+            key={item.id}
+            id={item.id}
+            ref={itemRefList.current[index]}
+            onClick={() => handleItemClick(index)}
+            className={`grid-dyn-item ${item.className} ${
+              activeIndex === index && expandedIndex === null ? "active" : ""
+            }`}
+            style={{
+              visibility: expandedIndex === index ? "visible" : "visible",
+            }}
+          >
+            <ItemContent
+              item={item}
+              tasklist={tasklist}
+              selectedTaskIndex={selectedTaskIndex}
+            />
+          </motion.div>
+        ))}
       </div>
-      
+
       <AnimatePresence>
         {expandedIndex !== null && (
           // We pass the unique layoutId to our component as a prop
           <ExpandedItemView
-            layoutId={`shared-content-${gridItems[expandedIndex].id}`}
             item={gridItems[expandedIndex]}
             onClose={handleCloseExpanded}
+            tasklist={tasklist}
+            selectedTaskIndex={selectedTaskIndex}
+            onToggleComplete={handleToggleComplete}
+            onTaskSubmit={handleTaskSubmit}
           />
         )}
       </AnimatePresence>
@@ -148,15 +239,29 @@ const Dashboard = () => {
       {/* Bottom Information -------------------------------------*/}
       <div className="bottom-info">
         <p>
-        Active Module: <span className="font-bold">{gridItems[activeIndex].id}</span>
+          Active Module:{" "}
+          <span className="font-bold">{gridItems[activeIndex].id}</span>
         </p>
       </div>
       <div className="next-actions">
-        {activeIndex > 0 ? <p className="next-actions">Swipe Left: {gridItems[activeIndex - 1].id}</p> : <p className="next-actions">Swipe Left: {gridItems[gridItems.length - 1].id}</p>}
-        {activeIndex < 4 ? <p className="next-actions">Swipe Right: {gridItems[activeIndex + 1].id}</p> : <p className="next-actions">Swipe Left: {gridItems[0].id}</p>}
+        {activeIndex > 0 ? (
+          <p className="next-actions">
+            Swipe Left: {gridItems[activeIndex - 1].id}
+          </p>
+        ) : (
+          <p className="next-actions">
+            Swipe Left: {gridItems[gridItems.length - 1].id}
+          </p>
+        )}
+        {activeIndex < 4 ? (
+          <p className="next-actions">
+            Swipe Right: {gridItems[activeIndex + 1].id}
+          </p>
+        ) : (
+          <p className="next-actions">Swipe Left: {gridItems[0].id}</p>
+        )}
       </div>
     </div>
-    
   );
 };
 
