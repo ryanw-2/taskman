@@ -13,6 +13,7 @@ import uvicorn
 from dotenv import load_dotenv
 from fastapi import (Depends, FastAPI, HTTPException, Response, WebSocket,
                    WebSocketDisconnect)
+from starlette.websockets import WebSocketState
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
@@ -22,10 +23,10 @@ from sqlalchemy.orm import Session
 GCP VERTEX
 """
 from google.cloud import aiplatform
-from google.cloud.aiplatform import gapic
-
+from google.cloud import aiplatform_v1
+from vertexai.preview.generative_models import GenerativeModel
 from google.cloud import speech_v1p1beta1 as speech
-# from google.cloud.aiplatform.gapic import prediction_service_client
+from google.cloud.aiplatform_v1.services.prediction_service import client as prediction_service_client
 from google.protobuf import json_format
 from google.protobuf.struct_pb2 import Value
 import aiohttp
@@ -66,6 +67,9 @@ app.add_middleware(
 """
 ------------------------ SPEECH TO TEXT CONFIG -------------------------
 """
+PROJECT_ID = "first-provider-463201-q5"
+LOCATION = "us-central1"
+
 speech_config = speech.RecognitionConfig(
     encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16,
     sample_rate_hertz=16000,
@@ -74,6 +78,35 @@ speech_config = speech.RecognitionConfig(
     model="telephony",
 )
 
+streaming_config = speech.StreamingRecognitionConfig(
+    config=speech_config,
+    interim_results=True,
+)
+
+
+"""
+------------------------ GEMINI CONFIG -------------------------
+"""
+async def get_gemini_response(text_prompt: str, websocket: WebSocket):
+    """
+    Sends a prompt to the Gemini API using the high-level Vertex AI SDK
+    and streams the response back through the provided WebSocket.
+    """
+    try:
+        # Initialize the generative model with the desired model name
+        model = GenerativeModel("gemini-1.5-flash-001")
+        
+        # Generate content with streaming enabled. This is the modern, correct method.
+        responses = model.generate_content(text_prompt, stream=True)
+        
+        # Stream the response chunks back to the client as they arrive
+        for response in responses:
+            # The response object contains the text directly
+            await websocket.send_text(response.text)
+
+    except Exception as e:
+        print(f"Error calling Gemini API: {e}")
+        await websocket.send_text("Sorry, I couldn't get a response.")
 """
 ------------------------ DATABASE CONFIG -------------------------
 """
@@ -131,6 +164,102 @@ class EventModel(EventBase):
 """
 ------------------------ ENDPOINTS -------------------------
 """
+@app.websocket("/ws/smart-search")
+async def smart_search_websocket(websocket: WebSocket):
+    await websocket.accept()
+    
+    # Initialize the speech client
+    speech_client = speech.SpeechAsyncClient()
+    
+    try:
+        async def request_generator():
+            try:
+                # First, yield a request that contains only the configuration.
+                yield speech.StreamingRecognizeRequest(streaming_config=streaming_config)
+                
+                # Then, loop and yield the audio chunks as they arrive from the client.
+                while True:
+                    try:
+                        # Add timeout to prevent hanging
+                        audio_chunk = await asyncio.wait_for(
+                            websocket.receive_bytes(), 
+                            timeout=30.0
+                        )
+                        
+                        if not audio_chunk:
+                            break
+                            
+                        yield speech.StreamingRecognizeRequest(audio_content=audio_chunk)
+                        
+                    except asyncio.TimeoutError:
+                        print("Timeout waiting for audio chunk")
+                        break
+                    except WebSocketDisconnect:
+                        print("WebSocket disconnected during audio reception")
+                        break
+                    except Exception as e:
+                        print(f"Error receiving audio chunk: {e}")
+                        break
+                        
+            except Exception as e:
+                print(f"Error in request generator: {e}")
+        
+        # Create the streaming recognize call and await it to get the async iterator
+        responses = await speech_client.streaming_recognize(requests=request_generator())
+        
+        async for response in responses:
+            try:
+                if not response.results or not response.results[0].alternatives:
+                    continue
+                    
+                result = response.results[0]
+                
+                if result.is_final:
+                    transcription = result.alternatives[0].transcript.strip()
+                    
+                    if not transcription:
+                        continue
+                        
+                    print(f"Final Transcription: {transcription}")
+                    
+                    # Send thinking status
+                    await websocket.send_text("[THINKING]")
+                    
+                    # Get and send Gemini response
+                    await get_gemini_response(transcription, websocket)
+                    
+                    # Send end marker
+                    await websocket.send_text("[END_OF_RESPONSE]")
+                    
+            except WebSocketDisconnect:
+                print("WebSocket disconnected during response processing")
+                break
+            except Exception as e:
+                print(f"Error processing transcription result: {e}")
+                # Send error message to client
+                try:
+                    await websocket.send_text(f"[ERROR] Processing error: {str(e)}")
+                except:
+                    pass
+                continue
+                
+    except WebSocketDisconnect:
+        print("WebSocket disconnected")
+    except Exception as e:
+        print(f"An error occurred during transcription: {e}")
+        # Try to send error to client if connection is still open
+        try:
+            await websocket.send_text(f"[ERROR] Transcription error: {str(e)}")
+        except:
+            pass
+    finally:
+        try:
+            if websocket.client_state != WebSocketState.DISCONNECTED:
+                await websocket.close()
+        except:
+            pass
+        
+        print("WebSocket connection cleanup completed.")
 
 @app.post("/calendar/")
 async def create_eventlist(eventlist: EventBase, db: db_dependency):
@@ -255,8 +384,6 @@ async def read_tasklist(db: db_dependency, skip: int = 0, limit: int = 10):
     """
     tasklist = db.query(models.TaskList).offset(skip).limit(limit).all()
     return tasklist
-
-
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
