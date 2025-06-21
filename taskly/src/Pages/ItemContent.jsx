@@ -5,9 +5,24 @@ import "./ItemContent.css";
 import timer from "../assets/stopwatch_icon.png";
 import note from "../assets/notepad_icon.png";
 import { motion } from "framer-motion";
+import { toDate, format} from 'date-fns-tz';
+
+const getTopPosition = (date, userTimezone) => {
+  const dateObj = typeof date === 'string' ? new Date(date) : date;
+  if (isNaN(dateObj.getTime())) return 0; // Guard against invalid dates
+
+  const hours = parseInt(format(dateObj, 'H', { timeZone: userTimezone }));
+  const minutes = parseInt(format(dateObj, 'm', { timeZone: userTimezone }));
+  const totalMinutes = hours * 60 + minutes;
+  return (totalMinutes / 1440) * 100;
+};
+
 
 // This component just renders the 'insides' of a grid item
-const ItemContent = ({ item, tasklist, selectedTaskIndex }) => {
+const ItemContent = ({ item, tasklist, eventlist, chatHistory }) => {
+  const timeIndicatorRef = useRef(null);
+  const [currentTime, setCurrentTime] = useState(new Date());
+  
   // Use a motion.h3 for the title to allow for smoother text animation
   const title = item.title ? (
     <motion.h3 layout="position">
@@ -29,15 +44,47 @@ const ItemContent = ({ item, tasklist, selectedTaskIndex }) => {
       </div>
     );
   } else if (item.id === "Calendar") {
+    const sortedEvents = [...(eventlist || [])].sort((a, b) => new Date(a.date) - new Date(b.date));
+    const userTimezone = "America/Los_Angeles";
+    const hours = Array.from({ length: 24 }, (_, i) => i);
+
     content = (
-      <div>
-        <p>Hello Calendar</p>
+      // FIX: New wrapper to hold both title and timeline
+      <div className="calendar-container" readOnly>
+        <div className="calendar-header">{title}</div>
+        <div className="calendar-grid-view">
+          <div className="time-scale-grid">
+            {hours.map(hour => (
+              <div key={hour} className="hour-marker-grid">
+                <span>{hour === 12 ? '12P' : hour > 12 ? `${hour % 12}P` : hour === 0 ? '12A' : `${hour}A`}</span>
+              </div>
+            ))}
+          </div>
+          <div className="timeline-grid">
+            {sortedEvents.map(event => (
+              <div key={event.id} className="event-card-grid" style={{ top: `${getTopPosition(event.date, userTimezone)}%` }}>
+                <div className="event-title-grid">{event.title}</div>
+              </div>
+            ))}
+            <div 
+              ref={timeIndicatorRef}
+              className="time-indicator-grid" 
+              style={{ top: `${getTopPosition(currentTime, userTimezone)}%` }}
+            ></div>
+          </div>
+        </div>
       </div>
     );
   } else if (item.id === "Smart Search") {
     content = (
-      <div>
-        <p>Hello Smart Search</p>
+      <div className="smart-search-view" readOnly>
+        <div className="chat-history">
+          {chatHistory.map((msg, index) => (
+            <div key={index} className={`chat-message ${msg.sender}`}>
+              <p>{msg.text}</p>
+            </div>
+          ))}
+        </div>
       </div>
     );
   } else if (item.id === "Checklist") {

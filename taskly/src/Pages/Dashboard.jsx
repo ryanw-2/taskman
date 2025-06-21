@@ -21,18 +21,33 @@ const MONTH_LIST = [
 ];
 
 const Dashboard = () => {
+  // GESTURE CONTROL STATE
   const [gesture, setGesture] = useState("none");
   const [activeIndex, setActiveIndex] = useState(0);
   const [expandedIndex, setExpandedIndex] = useState(null);
 
   // --- CHECKLIST-SPECIFIC STATE IS NOW IN THE DASHBOARD ---
-  const [tasklist, setTasklist] = useState([]);
+  const [taskList, setTasklist] = useState([]);
   const [selectedTaskIndex, setSelectedTaskIndex] = useState(0);
+  
+  // --- CALENDAR STATE
+  const [eventList, setEventList] = useState([]);
 
+  // --- GRID ITEM LIST
   const itemRefList = useRef([]);
   itemRefList.current = Array(5)
     .fill()
     .map((_, i) => itemRefList.current[i] || React.createRef());
+
+  // --- SMART SEARCH STATE ---
+  const [isRecording, setIsRecording] = useState(false);
+  const [isThinking, setIsThinking] = useState(false);
+  const [chatHistory, setChatHistory] = useState([]);
+  const [interimTranscript, setInterimTranscript] = useState("");
+
+  const smartSearchSocket = useRef(null);
+  const mediaRecorder = useRef(null);
+  const audioStream = useRef(null);
 
   // --- Time and Date Logic (can be simplified) ---
   const currentTime = new Date();
@@ -45,6 +60,7 @@ const Dashboard = () => {
   const year = currentTime.getFullYear();
 
   // --- API & DATA HANDLING LIVES IN THE PARENT ---
+  // CHECKLIST -------------------------------------
   const fetchTasklist = async () => {
     try {
       const response = await api.get("/checklist/");
@@ -77,11 +93,117 @@ const Dashboard = () => {
     await api.post("/checklist/", newTaskData);
     fetchTasklist(); // Re-fetch to get the new list with the new ID
   };
-  
+
+  // CALENDAR -------------------------------------
+  const fetchEventList = async () => {
+    try {
+      const response = await api.get("/calendar/today/");
+      setEventList(response.data);
+    } catch (error) {
+      console.error("Fail to fetch EventList: ", error);
+    }
+  }
+
+  const handleEventSubmit = async (newEventData) => {
+    await api.post("/calendar/", newEventData);
+    fetchEventList();
+  }
+
+  // SMART SEARCH ---------------------------------
+  const startRecording = async () => {
+    if (isRecording) return;
+    setInterimTranscript("");
+    setIsThinking(false);
+
+    try {
+      audioStream.current = await navigator.mediaDevices.getUserMedia({
+        audio: true,
+      });
+      smartSearchSocket.current = new WebSocket("ws://localhost:8000/ws/smart-search");
+
+      smartSearchSocket.current.onopen = () => {
+        console.log("Smart Search WebSocket established.");
+        setIsRecording(true);
+        mediaRecorder.current = new MediaRecorder(audioStream.current, {
+          mimeType: "audio/webm;codecs=opus",
+        });
+
+        mediaRecorder.current.ondataavailable = (event) => {
+          if (
+            event.data.size > 0 &&
+            smartSearchSocket.current.readyState === WebSocket.OPEN
+          ) {
+            smartSearchSocket.current.send(event.data);
+          }
+        };
+
+        mediaRecorder.current.onstop = () => {
+          if (smartSearchSocket.current.readyState === WebSocket.OPEN) {
+            smartSearchSocket.current.close();
+          }
+        };
+
+        mediaRecorder.current.start(250);
+      };
+
+      smartSearchSocket.current.onmessage = (event) => {
+        const message = event.data;
+        // --- REAL-TIME TRANSCRIPT HANDLING ---
+
+        if (message.startsWith("[INTERIM]")) {
+            setInterimTranscript(message.replace("[INTERIM]", "").trim());
+        } else if (message.startsWith("[USER]")) {
+          const userText = message.replace("[USER]", "").trim();
+          setInterimTranscript(""); // Clear interim text
+          setChatHistory(prev => [...prev, { sender: 'user', text: userText }]);
+        } else if (message === "[THINKING]") {
+          setIsThinking(true);
+          setChatHistory(prev => [...prev, { sender: 'ai', text: '' }]);
+        } else if (message === "[END_OF_RESPONSE]") {
+          setIsThinking(false);
+        } else {
+          setIsThinking(false); // Stop thinking once first text chunk arrives
+          setChatHistory(prev => {
+            const newHistory = [...prev];
+            if (newHistory.length > 0 && newHistory[newHistory.length - 1].sender === 'ai') {
+              newHistory[newHistory.length - 1].text += message;
+            }
+            return newHistory;
+          });
+        }
+      };
+
+      smartSearchSocket.current.onclose = () => {
+        console.log("Smart Search Websocket closed.");
+        stopRecordingCleanup();
+      };
+    } catch (err) {
+      console.error("Error starting recording:", err);
+      stopRecordingCleanup();
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorder.current && mediaRecorder.current.state === "recording") {
+      mediaRecorder.current.stop();
+    }
+  };
+
+  const stopRecordingCleanup = () => {
+    if (audioStream.current) {
+      audioStream.current.getTracks().forEach((track) => track.stop());
+    }
+    setIsRecording(false);
+    setIsThinking(false);
+  };
+
+  // Fetch Data Lists
   useEffect(() => {
     fetchTasklist();
+    fetchEventList();
   }, []);
 
+  // Establish Hand Gesture Detector WS
   useEffect(() => {
     // Key component used by front end to connect
     const ws = new WebSocket("ws://localhost:8000/ws");
@@ -108,6 +230,7 @@ const Dashboard = () => {
     };
   }, []);
 
+  // Work Gesture Control
   useEffect(() => {
     if (gesture === "none") {
       return;
@@ -135,23 +258,44 @@ const Dashboard = () => {
       if (gridItems[expandedIndex].id === "Checklist") {
         if (gesture === "downswipe") {
           setSelectedTaskIndex((prev) =>
-            prev < tasklist.length - 1 ? prev + 1 : 0
+            prev < taskList.length - 1 ? prev + 1 : 0
           );
         } else if (gesture === "upswipe") {
           setSelectedTaskIndex((prev) =>
-            prev > 0 ? prev - 1 : tasklist.length - 1
+            prev > 0 ? prev - 1 : taskList.length - 1
           );
         } else if (gesture === "click") {
-          if (tasklist[selectedTaskIndex]) {
-            handleToggleComplete(tasklist[selectedTaskIndex]);
+          if (taskList[selectedTaskIndex]) {
+            handleToggleComplete(taskList[selectedTaskIndex]);
           }
         }
+      // --- Gestures for SMART SEARCH Expanded View ---
+      } else if (gridItems[expandedIndex].id === "Smart Search") {
+        if (gesture === "click") {
+          isRecording ? stopRecording() : startRecording();
+        }
+      // --- Gestures for CALENDAR Expanded View
+      } else if (gridItems[expandedIndex].id === "Calendar") {
+        if (gesture === "downswipe") {
+          setSelectedTaskIndex((prev) =>
+            prev < eventList.length - 1 ? prev + 1 : 0
+          );
+        } else if (gesture === "upswipe") {
+          setSelectedTaskIndex((prev) =>
+            prev > 0 ? prev - 1 : eventList.length - 1
+          );
+        } else if (gesture === "click") {
+          if (eventList[selectedTaskIndex]) {
+            handleToggleComplete(eventList[selectedTaskIndex]);
+          }
+        }        
       }
+
       if (gesture === "fist") handleCloseExpanded();
     }
 
     setGesture("none");
-  }, [gesture]);
+  }, [gesture, isRecording]);
 
   const handleItemClick = (index) => {
     alert(`Button ${index} was clicked!`, "");
@@ -165,11 +309,7 @@ const Dashboard = () => {
 
   // DATA
   const gridItems = [
-    {
-      id: "Calendar",
-      title: `${month} ${day}, ${year}`,
-      className: "calendar",
-    },
+    { id: "Calendar", title: `${month} ${day}, ${year}`, className: "calendar" },
     { id: "Smart Search", title: "Taskly Ask", className: "smart-search" },
     { id: "Checklist", title: "Checklist", className: "checklist" },
     { id: "Timer", content: null, className: "secondary-widget1" },
@@ -215,8 +355,10 @@ const Dashboard = () => {
           >
             <ItemContent
               item={item}
-              tasklist={tasklist}
+              tasklist={taskList}
+              eventlist={eventList}
               selectedTaskIndex={selectedTaskIndex}
+              chatHistory={chatHistory}
             />
           </motion.div>
         ))}
@@ -224,14 +366,22 @@ const Dashboard = () => {
 
       <AnimatePresence>
         {expandedIndex !== null && (
-          // We pass the unique layoutId to our component as a prop
           <ExpandedItemView
             item={gridItems[expandedIndex]}
             onClose={handleCloseExpanded}
-            tasklist={tasklist}
+            tasklist={taskList}
+            eventlist={eventList}
+            onEventSubmit={handleEventSubmit}
             selectedTaskIndex={selectedTaskIndex}
             onToggleComplete={handleToggleComplete}
             onTaskSubmit={handleTaskSubmit}
+            // Smart Search Props
+            isRecording={isRecording}
+            isThinking={isThinking}
+            chatHistory={chatHistory}
+            interimTranscript={interimTranscript}
+            onStartRecord={startRecording}
+            onStopRecord={stopRecording}
           />
         )}
       </AnimatePresence>

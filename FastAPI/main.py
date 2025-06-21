@@ -71,7 +71,7 @@ PROJECT_ID = "first-provider-463201-q5"
 LOCATION = "us-central1"
 
 speech_config = speech.RecognitionConfig(
-    encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16,
+    encoding=speech.RecognitionConfig.AudioEncoding.WEBM_OPUS,
     sample_rate_hertz=16000,
     language_code="en-US",
     enable_automatic_punctuation=True,
@@ -94,7 +94,7 @@ async def get_gemini_response(text_prompt: str, websocket: WebSocket):
     """
     try:
         # Initialize the generative model with the desired model name
-        model = GenerativeModel("gemini-1.5-flash-001")
+        model = GenerativeModel("gemini-2.5-flash")
         
         # Generate content with streaming enabled. This is the modern, correct method.
         responses = model.generate_content(text_prompt, stream=True)
@@ -168,98 +168,65 @@ class EventModel(EventBase):
 async def smart_search_websocket(websocket: WebSocket):
     await websocket.accept()
     
-    # Initialize the speech client
-    speech_client = speech.SpeechAsyncClient()
-    
-    try:
-        async def request_generator():
-            try:
-                # First, yield a request that contains only the configuration.
-                yield speech.StreamingRecognizeRequest(streaming_config=streaming_config)
-                
-                # Then, loop and yield the audio chunks as they arrive from the client.
-                while True:
-                    try:
-                        # Add timeout to prevent hanging
-                        audio_chunk = await asyncio.wait_for(
-                            websocket.receive_bytes(), 
-                            timeout=30.0
-                        )
-                        
-                        if not audio_chunk:
-                            break
-                            
-                        yield speech.StreamingRecognizeRequest(audio_content=audio_chunk)
-                        
-                    except asyncio.TimeoutError:
-                        print("Timeout waiting for audio chunk")
-                        break
-                    except WebSocketDisconnect:
-                        print("WebSocket disconnected during audio reception")
-                        break
-                    except Exception as e:
-                        print(f"Error receiving audio chunk: {e}")
-                        break
-                        
-            except Exception as e:
-                print(f"Error in request generator: {e}")
-        
-        # Create the streaming recognize call and await it to get the async iterator
-        responses = await speech_client.streaming_recognize(requests=request_generator())
-        
-        async for response in responses:
-            try:
-                if not response.results or not response.results[0].alternatives:
-                    continue
-                    
-                result = response.results[0]
-                
-                if result.is_final:
-                    transcription = result.alternatives[0].transcript.strip()
-                    
-                    if not transcription:
-                        continue
-                        
-                    print(f"Final Transcription: {transcription}")
-                    
-                    # Send thinking status
-                    await websocket.send_text("[THINKING]")
-                    
-                    # Get and send Gemini response
-                    await get_gemini_response(transcription, websocket)
-                    
-                    # Send end marker
-                    await websocket.send_text("[END_OF_RESPONSE]")
-                    
-            except WebSocketDisconnect:
-                print("WebSocket disconnected during response processing")
+    audio_queue = asyncio.Queue()
+
+    async def receive_audio():
+        """Producer: Receives audio from the client and puts it into the queue."""
+        try:
+            while True:
+                audio_chunk = await websocket.receive_bytes()
+                await audio_queue.put(audio_chunk)
+        except WebSocketDisconnect:
+            print("Client disconnected.")
+            await audio_queue.put(None)
+
+    async def audio_stream_generator():
+        """Generator that yields requests for the Speech-to-Text API."""
+        yield speech.StreamingRecognizeRequest(streaming_config=streaming_config)
+        while True:
+            chunk = await audio_queue.get()
+            if chunk is None:
                 break
-            except Exception as e:
-                print(f"Error processing transcription result: {e}")
-                # Send error message to client
-                try:
-                    await websocket.send_text(f"[ERROR] Processing error: {str(e)}")
-                except:
-                    pass
+            yield speech.StreamingRecognizeRequest(audio_content=chunk)
+
+    async def process_transcriptions():
+        """Consumer: Processes transcription results and sends them to the client."""
+        speech_client = speech.SpeechAsyncClient()
+        responses_iterator = speech_client.streaming_recognize(requests=audio_stream_generator())
+        async_iterable = await responses_iterator
+        async for response in async_iterable:
+            if not response.results or not response.results[0].alternatives:
                 continue
-                
-    except WebSocketDisconnect:
-        print("WebSocket disconnected")
+
+            result = response.results[0]
+            print(result)
+            transcript = result.alternatives[0].transcript.strip()
+
+            if not transcript:
+                continue
+
+            if result.is_final:
+                print(f"Final Transcription: {transcript}")
+                await websocket.send_text(f"[USER] {transcript}")
+                await websocket.send_text("[THINKING]")
+                await get_gemini_response(transcript, websocket)
+                await websocket.send_text("[END_OF_RESPONSE]")
+            else:
+                await websocket.send_text(f"[INTERIM] {transcript}")
+
+    receive_task = asyncio.create_task(receive_audio())
+    process_task = asyncio.create_task(process_transcriptions())
+
+    try:
+        await asyncio.gather(receive_task, process_task)
     except Exception as e:
-        print(f"An error occurred during transcription: {e}")
-        # Try to send error to client if connection is still open
-        try:
-            await websocket.send_text(f"[ERROR] Transcription error: {str(e)}")
-        except:
-            pass
+        print(f"An error occurred in the main WebSocket task: {e}")
     finally:
-        try:
-            if websocket.client_state != WebSocketState.DISCONNECTED:
-                await websocket.close()
-        except:
-            pass
-        
+        receive_task.cancel() 
+        process_task.cancel()
         print("WebSocket connection cleanup completed.")
+        if websocket.client_state == WebSocketState.CONNECTED:
+            await websocket.close()
 
 @app.post("/calendar/")
 async def create_eventlist(eventlist: EventBase, db: db_dependency):

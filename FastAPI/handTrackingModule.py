@@ -2,7 +2,9 @@ import cv2 as cv
 import numpy as np
 import mediapipe as mp
 import math
-
+mp_drawing = mp.solutions.drawing_utils
+mp_drawing_styles = mp.solutions.drawing_styles
+mp_hands = mp.solutions.hands
 
 class handDetector:
     """
@@ -29,7 +31,7 @@ class handDetector:
         self.min_tracking_confidence = minTrackingConf
 
         # Set up mediapipe library and tools
-        self.mpHands = mp.solutions.hands  # type: ignore
+        self.mpHands = mp.solutions.hands
         self.hands = self.mpHands.Hands(
             self.mode,
             self.max_num_hands,
@@ -38,7 +40,7 @@ class handDetector:
             self.min_tracking_confidence,
         )
 
-        self.mpDraw = mp.solutions.drawing_utils  # type: ignore
+        self.mpDraw = mp.solutions.drawing_utils 
 
         # Set up cursor state
         self.starting_x = 0
