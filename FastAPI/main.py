@@ -97,6 +97,7 @@ async def get_gemini_response(text_prompt: str, websocket: WebSocket):
         model = GenerativeModel("gemini-2.5-flash")
         
         # Generate content with streaming enabled. This is the modern, correct method.
+        text_prompt += "Respond in two sentences or fewer without formatting."
         responses = model.generate_content(text_prompt, stream=True)
         
         # Stream the response chunks back to the client as they arrive
@@ -105,7 +106,6 @@ async def get_gemini_response(text_prompt: str, websocket: WebSocket):
             await websocket.send_text(response.text)
 
     except Exception as e:
-        print(f"Error calling Gemini API: {e}")
         await websocket.send_text("Sorry, I couldn't get a response.")
 """
 ------------------------ DATABASE CONFIG -------------------------
@@ -199,14 +199,12 @@ async def smart_search_websocket(websocket: WebSocket):
                 continue
 
             result = response.results[0]
-            print(result)
             transcript = result.alternatives[0].transcript.strip()
 
             if not transcript:
                 continue
 
             if result.is_final:
-                print(f"Final Transcription: {transcript}")
                 await websocket.send_text(f"[USER] {transcript}")
                 await websocket.send_text("[THINKING]")
                 await get_gemini_response(transcript, websocket)

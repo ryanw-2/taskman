@@ -104,56 +104,49 @@
   padding-top: 1rem;
   border-top: 1px solid #4a5568;
   display: flex;
-  justify-content: center;
+  flex-direction: column;
   align-items: center;
+  gap: 0.5rem;
 }
 
 .record-button {
-  background-color: #48bb78; /* Green for start */
-  color: white;
-  border: none;
-  border-radius: 8px;
-  padding: 0.75rem 1.5rem;
-  font-size: 1rem;
-  font-weight: bold;
+  background-color: #2b6cb0; /* A primary blue */
+  border: 2px solid #4a5568;
+  border-radius: 50%;
+  width: 70px;
+  height: 70px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
   cursor: pointer;
-  transition: background-color 0.2s ease;
+  transition: all 0.2s ease-in-out;
+}
+
+.record-button svg {
+  width: 32px;
+  height: 32px;
+  fill: #e2e8f0;
+  transition: fill 0.2s ease-in-out;
 }
 
 .record-button:hover {
-  background-color: #38a169;
+  border-color: #90cdf4;
 }
 
 .record-button.recording {
-  background-color: #e53e3e; /* Red for stop */
-}
-
-.record-button.recording:hover {
   background-color: #c53030;
+  border-color: #f56565;
+  animation: pulse 1.5s infinite;
 }
 
-.thinking-indicator {
-  display: flex;
-  gap: 8px;
-}
-.thinking-indicator::after {
-  content: "";
-  display: block;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background-color: #cbd5e0;
-  animation: pulse 1.4s infinite ease-in-out both;
-  animation-delay: 0.2s;
+.record-button.recording svg {
+  fill: white;
 }
 
 @keyframes pulse {
-  0%, 80%, 100% {
-    transform: scale(0);
-  }
-  40% {
-    transform: scale(1.0);
-  }
+  0% { box-shadow: 0 0 0 0 rgba(245, 101, 101, 0.7); }
+  70% { box-shadow: 0 0 0 15px rgba(245, 101, 101, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(245, 101, 101, 0); }
 }
 
 /* --- CALENDAR VIEW STYLES --- */
@@ -169,6 +162,7 @@
 }
 
 .calendar-timeline-container {
+  padding: 5px;
   flex-grow: 1;
   display: flex;
   overflow-y: scroll; /* Make the whole container scrollable */
@@ -187,7 +181,6 @@
   align-items: flex-start;
   font-size: 0.75rem;
   color: #a0aec0;
-  border-top: 1px solid #3b475c;
   position: relative;
 }
 
@@ -215,6 +208,13 @@
   z-index: 10;
 }
 
+.event-card.selected {
+  border-left: 4px solid hsl(126, 100%, 50%); /* A blue left border to highlight */
+  transform: scale(1.01); /* Slightly grow the card */
+  z-index: 40;
+  transition: 0.2s ease-in-out;
+}
+
 .event-time {
   font-size: 0.75rem;
   font-weight: bold;
@@ -237,7 +237,7 @@
   width: 100%;
   height: 2px;
   background-color: #e53e3e; /* Bright red for visibility */
-  z-index: 20;
+  z-index: 50;
   pointer-events: none; /* Allows clicking through the line */
 }
 
@@ -251,4 +251,42 @@
   background-color: #e53e3e;
   border-radius: 50%;
   border: 2px solid white;
+}
+
+/* Form add*/
+.add-item-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  padding-top: 1rem;
+  border-top: 1px solid #4a5568;
+}
+
+.add-item-form input {
+  flex: 1 1 150px; /* Allows inputs to wrap on smaller screens */
+  background-color: #4a5568;
+  border: 1px solid #718096;
+  border-radius: 6px;
+  color: #e2e8f0;
+  padding: 0.6rem 0.85rem;
+  font-size: 0.9rem;
+}
+
+.add-item-form input::placeholder {
+  color: #a0aec0;
+}
+
+.add-item-form button {
+  background-color: #38a169; /* Green for add/submit */
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 0.6rem 1.2rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.add-item-form button:hover {
+  background-color: #2f855a;
 }

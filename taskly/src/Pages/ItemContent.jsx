@@ -50,28 +50,25 @@ const ItemContent = ({ item, tasklist, eventlist, chatHistory }) => {
 
     content = (
       // FIX: New wrapper to hold both title and timeline
-      <div className="calendar-container" readOnly>
-        <div className="calendar-header">{title}</div>
-        <div className="calendar-grid-view">
-          <div className="time-scale-grid">
-            {hours.map(hour => (
-              <div key={hour} className="hour-marker-grid">
-                <span>{hour === 12 ? '12P' : hour > 12 ? `${hour % 12}P` : hour === 0 ? '12A' : `${hour}A`}</span>
-              </div>
-            ))}
-          </div>
-          <div className="timeline-grid">
-            {sortedEvents.map(event => (
-              <div key={event.id} className="event-card-grid" style={{ top: `${getTopPosition(event.date, userTimezone)}%` }}>
-                <div className="event-title-grid">{event.title}</div>
-              </div>
-            ))}
-            <div 
-              ref={timeIndicatorRef}
-              className="time-indicator-grid" 
-              style={{ top: `${getTopPosition(currentTime, userTimezone)}%` }}
-            ></div>
-          </div>
+      <div className="calendar-grid-view">
+        <div className="time-scale-grid">
+          {hours.map(hour => (
+            <div key={hour} className="hour-marker-grid">
+              <span>{hour === 12 ? '12P' : hour > 12 ? `${hour % 12}P` : hour === 0 ? '12A' : `${hour}A`}</span>
+            </div>
+          ))}
+        </div>
+        <div className="timeline-grid">
+          {sortedEvents.map(event => (
+            <div key={event.id} className="event-card-grid" style={{ top: `${getTopPosition(event.date, userTimezone)}%` }}>
+              <div className="event-title-grid">{event.title}</div>
+            </div>
+          ))}
+          <div 
+            ref={timeIndicatorRef}
+            className="time-indicator-grid" 
+            style={{ top: `${getTopPosition(currentTime, userTimezone)}%` }}
+          ></div>
         </div>
       </div>
     );

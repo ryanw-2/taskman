@@ -2,14 +2,14 @@ import React, { useState, useEffect, useRef } from "react";
 import api from "../API";
 import "./ExpandedItemView.css";
 import { motion } from "framer-motion"; // 1. Import motion
-import { toDate, format} from 'date-fns-tz';
+import { toDate, format } from "date-fns-tz";
 
 // 2. Accept layoutId as a prop
 const getTopPosition = (date, userTimezone) => {
   // We need to create a Date object first if it's a string
-  const dateObj = typeof date === 'string' ? new Date(date) : date;
-  const hours = parseInt(format(dateObj, 'H', { timeZone: userTimezone }));
-  const minutes = parseInt(format(dateObj, 'm', { timeZone: userTimezone }));
+  const dateObj = typeof date === "string" ? new Date(date) : date;
+  const hours = parseInt(format(dateObj, "H", { timeZone: userTimezone }));
+  const minutes = parseInt(format(dateObj, "m", { timeZone: userTimezone }));
   const totalMinutes = hours * 60 + minutes;
   return (totalMinutes / 1440) * 100;
 };
@@ -51,9 +51,9 @@ const ExpandedItemView = ({
   const timeIndicatorRef = useRef(null);
   // Auto-scroll the chat history to the bottom
   useEffect(() => {
-    if (item.id === "Smart Search"){
+    if (item.id === "Smart Search") {
       chatEndRef.current.scrollIntoView({ behavior: "smooth" });
-    } 
+    }
   }, [chatHistory, isThinking, interimTranscript]);
 
   const handleInputChange = (event) => {
@@ -69,13 +69,16 @@ const ExpandedItemView = ({
     onTaskSubmit(taskData); // Call the function passed down from Dashboard
     setTaskData({ title: "", desc: "", priority: "", complete: false }); // Reset form
   };
-  
+
   useEffect(() => {
     if (item.id === "Calendar") {
       const timerId = setInterval(() => setCurrentTime(new Date()), 60000);
       setTimeout(() => {
         if (timeIndicatorRef.current) {
-          timeIndicatorRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          timeIndicatorRef.current.scrollIntoView({
+            behavior: "smooth",
+            block: "center",
+          });
         }
       }, 100);
       return () => clearInterval(timerId);
@@ -84,7 +87,7 @@ const ExpandedItemView = ({
 
   const handleEventInputChange = (event) => {
     const { name, value } = event.target;
-    setEventData(prev => ({ ...prev, [name]: value }));
+    setEventData((prev) => ({ ...prev, [name]: value }));
   };
 
   // --- REVISED EVENT SUBMISSION HANDLER ---
@@ -95,15 +98,17 @@ const ExpandedItemView = ({
     const dateInputString = eventData.date; // e.g., "2025-06-20-09-30"
 
     try {
-      const parts = dateInputString.split('-').map(part => parseInt(part, 10));
+      const parts = dateInputString
+        .split("-")
+        .map((part) => parseInt(part, 10));
       if (parts.length !== 5 || parts.some(isNaN)) {
         throw new Error("Invalid date components.");
       }
-      
+
       const [year, month, day, hour, minute] = parts;
       // WORKING
       const utcDate = new Date(Date.UTC(year, month - 1, day, hour, minute));
-      
+
       const submissionData = {
         title: eventData.title,
         desc: eventData.desc,
@@ -113,13 +118,11 @@ const ExpandedItemView = ({
 
       onEventSubmit(submissionData);
       setEventData({ title: "", desc: "", link: "", date: "" });
-      
     } catch (error) {
       console.error("Error processing date:", error);
       alert("Invalid date format. Please use YYYY-MM-DD-HH-MM.");
     }
   };
-
 
   // RENDER CONTENT
   let expContent;
@@ -138,7 +141,9 @@ const ExpandedItemView = ({
       </div>
     );
   } else if (item.id === "Calendar") {
-    const sortedEvents = [...eventlist].sort((a, b) => new Date(a.date) - new Date(b.date));
+    const sortedEvents = [...eventlist].sort(
+      (a, b) => new Date(a.date) - new Date(b.date)
+    );
     const userTimezone = "America/Los_Angeles";
     const hours = Array.from({ length: 24 }, (_, i) => i);
 
@@ -146,34 +151,74 @@ const ExpandedItemView = ({
       <div className="calendar-view">
         <div className="calendar-timeline-container" ref={timelineRef}>
           <div className="time-scale">
-            {hours.map(hour => (
+            {hours.map((hour) => (
               <div key={hour} className="hour-marker">
-                <span>{hour === 0 ? '12 AM' : hour < 12 ? `${hour} AM` : hour === 12 ? '12 PM' : `${hour % 12} PM`}</span>
+                <span>
+                  {hour === 0
+                    ? "12 AM"
+                    : hour < 12
+                    ? `${hour} AM`
+                    : hour === 12
+                    ? "12 PM"
+                    : `${hour % 12} PM`}
+                </span>
               </div>
             ))}
           </div>
           <div className="timeline">
-            {sortedEvents.map(event => (
-              <div key={event.id} className="event-card" style={{ top: `${getTopPosition(event.date, userTimezone)}%` }}>
-                  <div className="event-time">{format(new Date(event.date), 'p', { timeZone: userTimezone })}</div>
-                  <div className="event-title">{event.title}</div>
-                  <p className="event-desc">{event.desc}</p>
+            {sortedEvents.map((event, index) => (
+              <div
+                key={event.id}
+                className={`event-card ${
+                  index === selectedTaskIndex ? "selected" : ""
+                }`}
+                style={{ top: `${getTopPosition(event.date, userTimezone)}%` }}
+              >
+                <div className="event-time">
+                  {format(new Date(event.date), "p", {
+                    timeZone: userTimezone,
+                  })}
+                </div>
+                <div className="event-title">{event.title}</div>
+                <p className="event-desc">{event.desc}</p>
               </div>
             ))}
-            <div 
+            <div
               ref={timeIndicatorRef}
-              className="time-indicator" 
+              className="time-indicator"
               style={{ top: `${getTopPosition(currentTime, userTimezone)}%` }}
             >
               <div className="time-indicator-dot"></div>
             </div>
           </div>
         </div>
-        <form onSubmit={handleEventSubmit} className="add-event-form">
-          <input name="title" value={eventData.title} onChange={handleEventInputChange} placeholder="Event Title" required />
-          <input name="desc" value={eventData.desc} onChange={handleEventInputChange} placeholder="Description" />
-          <input name="link" value={eventData.link} onChange={handleEventInputChange} placeholder="Link (e.g., zoom.us)" />
-          <input name="date" value={eventData.date} onChange={handleEventInputChange} placeholder="Date (YYYY-MM-DD-HH-MM)" required />
+        <form onSubmit={handleEventSubmit} className="add-item-form">
+          <input
+            name="title"
+            value={eventData.title}
+            onChange={handleEventInputChange}
+            placeholder="Event Title"
+            required
+          />
+          <input
+            name="desc"
+            value={eventData.desc}
+            onChange={handleEventInputChange}
+            placeholder="Description"
+          />
+          <input
+            name="link"
+            value={eventData.link}
+            onChange={handleEventInputChange}
+            placeholder="Link (e.g., zoom.us)"
+          />
+          <input
+            name="date"
+            value={eventData.date}
+            onChange={handleEventInputChange}
+            placeholder="Date (YYYY-MM-DD-HH-MM)"
+            required
+          />
           <button type="submit">Add Event</button>
         </form>
       </div>
@@ -247,7 +292,7 @@ const ExpandedItemView = ({
             </div>
           ))}
         </div>
-        <form className="add-task-form" onSubmit={handleTaskSubmit}>
+        <form className="add-item-form" onSubmit={handleTaskSubmit}>
           <input
             name="title"
             value={taskData.title}
