@@ -25,8 +25,6 @@ The primary achievement is the creation of a fluid, low-latency control system t
 
 ![Project Hero](Tools.jpg)
 
-*Demo video showing functionalities of dashboard*
-
 ## References
 
 Britton, B. K., & Tesser, A. (1991). Effects of time-management practices on college grades. *Journal of Educational Psychology, 83*(3), 405–410.
