@@ -1,4 +1,4 @@
-# Reclaiming Productivity: How Embodied Interaction Shapes Our Digital Workflow
+# Taskman: How Gestures and Voice Shape Our Digital Workflow
 
 In a world dominated by clicks and keystrokes, we've overlooked a powerful, innate tool for thought and organization: our hands. Cognitive science, as highlighted by researcher David McNeill, reveals that gestures are not mere afterthoughts but integral parts of our thought processes. This project explores that forgotten connection, moving beyond the screen to create a productivity tool that leverages natural, embodied interaction to enhance focus and reduce cognitive load.
 
@@ -12,25 +12,14 @@ The primary achievement is the creation of a fluid, low-latency control system t
 
 ## Technology Stack
 
-The system is built on a modern, full-stack architecture designed for real-time performance.
+| Layer            | Key Technologies                                              | Purpose / Role                                                                                          |
+|------------------|--------------------------------------------------------------|----------------------------------------------------------------------------------------------------------|
+| **Frontend**     | React, Framer Motion                                         | Single-page UI with smooth, component-based animations                                                   |
+| **Backend**      | Python, FastAPI, WebSockets, SQLAlchemy + SQLite             | High-performance API server, real-time bidirectional comms, persistent storage for tasks & calendar      |
+| **AI / ML**      | OpenCV + MediaPipe (hand tracking)                           | Real-time gesture detection & command translation                                                       |
+|                  | Google Cloud Speech-to-Text (streaming)                      | Fast, accurate voice transcription                                                                       |
+|                  | Google Vertex AI (Gemini)                                    | Conversational response generation powering the voice assistant                                          |
 
-### Frontend: The Projected Dashboard
-
-* **React:** The user interface is built as a dynamic single-page application using React, allowing for a component-based and easily maintainable structure.
-* **Framer Motion:** All UI animations, from the expansion of grid items to the fluid transitions between views, are handled by Framer Motion to ensure a polished user experience.
-
-### Backend: The Central Hub
-
-* **Python & FastAPI:** A high-performance Python backend built with the FastAPI framework serves as the core of the system.
-* **WebSockets:** Real-time, bidirectional communication for both gesture commands and the voice assistant is handled through WebSockets, ensuring low-latency interaction.
-* **SQLAlchemy & SQLite:** A database layer managed by SQLAlchemy stores and retrieves user data for the checklist and calendar modules.
-
-### AI & Machine Learning: The Control System
-
-* **Hand Detection & Tracking (Gesture Control):** The system uses a Python module built with **OpenCV** to capture webcam video and the **MediaPipe** library to perform high-fidelity, real-time hand and landmark detection. This translates physical hand movements into actionable commands like "click" and "swipe."
-* **Voice-Powered Assistant (Smart Search):**
-   * **Google Cloud Speech-to-Text:** User speech is captured in the browser and streamed to this API for fast and accurate real-time transcription.
-   * **Google Cloud Vertex AI (Gemini):** The transcribed text is sent to a Gemini model, which generates intelligent, conversational responses, transforming the feature from a simple search to a true AI assistant.
 
 ## Demo
 
