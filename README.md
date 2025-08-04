@@ -2,7 +2,7 @@
 
 In a world dominated by clicks and keystrokes, we've overlooked a powerful, innate tool for thought and organization: our hands. Cognitive science, as highlighted by researcher David McNeill, reveals that gestures are not mere afterthoughts but integral parts of our thought processes. This project explores that forgotten connection, moving beyond the screen to create a productivity tool that leverages natural, embodied interaction to enhance focus and reduce cognitive load.
 
-![Project Hero](background1.JPG)
+![Project Hero](taskman-hero.JPG)
 
 ## Project Summary & Achievements
 
