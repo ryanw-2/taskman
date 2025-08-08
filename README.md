@@ -22,8 +22,6 @@ The primary achievement is the creation of a fluid, low-latency control system t
 
 
 ## Demo
-
-![Project Hero](Tools.jpg)
 ![Project Demo](taskman_small_demo.gif)
 
 ## References
